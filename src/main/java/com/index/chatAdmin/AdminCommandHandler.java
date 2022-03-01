@@ -8,6 +8,7 @@ import com.index.dbHandler.handlers.dbGIFHandler;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatPermissions;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.ChatPermissions;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
@@ -132,6 +133,24 @@ public class AdminCommandHandler {
             final StringTokenizer st = new StringTokenizer(orig_message);
             st.nextToken();
             im.deleteMessage(im.YummyChannel_CHAT, Integer.parseInt(st.nextToken().toString()));
+        }
+        else if ( orig_message.startsWith("//remove_url")){
+            final StringTokenizer st = new StringTokenizer(orig_message);
+            st.nextToken();
+            EditMessageText editMessageText = new EditMessageText();
+            editMessageText.setDisableWebPagePreview(true);
+            editMessageText.setChatId(String.valueOf(im.YummyChannel_CHAT));
+            editMessageText.setMessageId(Integer.valueOf(st.nextToken().toString()));
+            editMessageText.setText("Ну и от Кирилла.\n" +
+                    "Чат - не знаю, завтра или послезавтра открою наверное... Или уже после того как все закончится...\n" +
+                    "Если не скучно будет - можете вот исходники бота поколупать :)\n" +
+                    "https://github.com/MrKirill1232/INDEX_BOT_MAVEN\n" +
+                    "Бот кое-как работает, по-удалял там что Вам не нужно видеть, не думаю что в ближайшее время я им буду заниматься :(");
+            try {
+                im.execute(editMessageText);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
         }
     }
 
