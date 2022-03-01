@@ -128,6 +128,11 @@ public class AdminCommandHandler {
                 e.printStackTrace();
             }
         }
+        else if ( orig_message.startsWith("//delete")){
+            final StringTokenizer st = new StringTokenizer(orig_message);
+            st.nextToken();
+            im.deleteMessage(im.YummyChannel_CHAT, Integer.parseInt(st.nextToken().toString()));
+        }
     }
 
     boolean CheckUserPermissions (Update update){
