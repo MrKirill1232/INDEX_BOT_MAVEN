@@ -1,7 +1,7 @@
 package com.index.chatAdmin.cases;
 
 import com.index.IndexMain;
-import com.index.dbHandler.handlers.dbStickerHandler;
+import com.index.data.sql.stickerInfoHolder;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.StringTokenizer;
@@ -9,8 +9,8 @@ import java.util.StringTokenizer;
 public class removeIgnoringStikersAction {
 
     IndexMain im = new IndexMain();
-    dbStickerHandler sh = new dbStickerHandler();
-    String newmessage;
+    stickerInfoHolder instance = stickerInfoHolder.getInstance();
+    String newmessage = "";
 
     long chat_id;
     String name;
@@ -42,15 +42,15 @@ public class removeIgnoringStikersAction {
                     return;
                 }
                 else if ( sticker_url.startsWith("https://t.me/addstickers/") ){
-                    sticker_url = sh.getTokenFromStickerUrl(sticker_url);
+                    sticker_url = instance.getTokenFromStickerUrl(sticker_url);
                 }
             }
             else if ( update.getMessage().getReplyToMessage().hasSticker() ) {
                 sticker_url = update.getMessage().getReplyToMessage().getSticker().getSetName();
                 im.deleteMessage(chat_id, update.getMessage().getReplyToMessage().getMessageId());
             }
-            if ( sh.checkStickerInList(sticker_url, chat_id, name) ){
-                if ( sh.getDeleteStickerStatus(sticker_url, chat_id, name) ){
+            if ( instance.checkStickerInList(String.valueOf(chat_id), sticker_url) ){
+                if ( instance.deleteSticker(String.valueOf(chat_id), sticker_url, true) ){
                     newmessage = "Стрикер-пак " + sticker_url + " удален из списка игнорируемых стикеров;";
                 }
                 else {

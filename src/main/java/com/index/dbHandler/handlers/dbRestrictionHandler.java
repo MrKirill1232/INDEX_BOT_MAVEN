@@ -85,7 +85,7 @@ public class dbRestrictionHandler {
         return result_time;
     }
 
-    private static final String UPDATE_RESRICTION_TIME_FROM_TABLE = "UPDATE restrictions SET restriction_time=? WHERE chat_id=? AND user_id=?";
+    private static final String UPDATE_RESRICTION_TIME_FROM_TABLE = "UPDATE restrictions SET restriction_time=? WHERE chat_id=? AND user_id=? AND restriction_time>=?";
 
     /**
      * Обновляем время блокировки;
@@ -101,10 +101,10 @@ public class dbRestrictionHandler {
         try (Connection con = dbMain.getConnection();
              PreparedStatement ps = con.prepareStatement(UPDATE_RESRICTION_TIME_FROM_TABLE))
         {
-
             ps.setLong(1, chat_id);
             ps.setLong(2, user_id);
-            ps.setLong(3, RestrictionTime);
+            ps.setLong(3, System.currentTimeMillis()/1000);
+            ps.setLong(4, RestrictionTime);
             ps.executeUpdate();
             return true;
         }

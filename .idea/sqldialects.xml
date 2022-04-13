@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/src/main/java/com/index/dbHandler/handlers/dbStickerHandler.java" dialect="GenericSQL" />
     <file url="PROJECT" dialect="MariaDB" />
   </component>
   <component name="SqlResolveMappings">
-    <file url="file://$PROJECT_DIR$/src/main/java/com/index/dbHandler/handlers/dbGIFHandler.java" scope="{&quot;node&quot;:{  &quot;@negative&quot;:&quot;1&quot;,  &quot;group&quot;:{   &quot;@kind&quot;:&quot;root&quot;,   &quot;node&quot;:{    &quot;@negative&quot;:&quot;1&quot;   }  } }}" />
+    <file url="file://$PROJECT_DIR$/src/main/java/com/index/data/sql/stickerInfoHolder.java" scope="" />
+    <file url="file://$PROJECT_DIR$/src/main/java/com/index/dbHandler/handlers/dbGIFHandler.java" scope="" />
     <file url="PROJECT" scope="{&quot;node&quot;:{  &quot;@negative&quot;:&quot;1&quot;,  &quot;group&quot;:{   &quot;@kind&quot;:&quot;root&quot;,   &quot;node&quot;:{    &quot;name&quot;:{     &quot;@qname&quot;:&quot;00ee7304-7964-491a-bc21-d40ca1a5f39c&quot;    },    &quot;group&quot;:{     &quot;@kind&quot;:&quot;schema&quot;,     &quot;node&quot;:{      &quot;name&quot;:{       &quot;@qname&quot;:&quot;index_bot&quot;      }     }    }   }  } }}" />
   </component>
 </project>

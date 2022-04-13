@@ -3,14 +3,15 @@ package com.index.chatModeration.cases;
 import com.index.IndexMain;
 import com.index.chatAdmin.handlers.muteHandler;
 import com.index.chatModeration.moderators_chat.ModeratorChat;
-import com.index.dbHandler.handlers.dbStickerHandler;
+import com.index.data.sql.stickerInfoHolder;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class StickerAction {
 
     muteHandler mh = new muteHandler();
     IndexMain im = new IndexMain();
-    dbStickerHandler sh = new dbStickerHandler();
+    // dbStickerHandler sh = new dbStickerHandler();
+    stickerInfoHolder instance = stickerInfoHolder.getInstance();
 
     Integer message_id;
     String name;
@@ -30,7 +31,7 @@ public class StickerAction {
             if ( mh.tryMute(chat_id, user_id, name, re_name, time_in_seconds, true)){
             }
         }
-        if ( !sh.checkStickerInList(sticker_url, chat_id, name) ){
+        if ( !instance.checkStickerInList(String.valueOf(chat_id), sticker_url) ){
             /**
              * if true - in list
              * if false - delete
@@ -40,5 +41,4 @@ public class StickerAction {
             im.deleteMessage(chat_id, message_id);
         }
     }
-
 }

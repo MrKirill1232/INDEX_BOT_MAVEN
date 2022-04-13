@@ -26,7 +26,7 @@ public class banHandler {
         UNBAN.setChatId(String.valueOf(update.getMessage().getChatId()));
         try {
             im.execute(BAN);
-            im.execute(UNBAN);
+            //im.execute(UNBAN);
             im.deleteMessage(chat_id, mod_mes);
         } catch (TelegramApiException e) {
             e.printStackTrace();

@@ -1,15 +1,15 @@
 package com.index.chatAdmin.cases;
 
 import com.index.IndexMain;
-import com.index.dbHandler.handlers.dbStickerHandler;
+import com.index.data.sql.stickerInfoHolder;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.StringTokenizer;
 
 public class addIgnoringStickersAction {
     IndexMain im = new IndexMain();
-    dbStickerHandler sh = new dbStickerHandler();
-    String newmessage = "";
+    stickerInfoHolder instance = stickerInfoHolder.getInstance();
+    StringBuilder newmessage = new StringBuilder();
 
     long chat_id;
     String name;
@@ -24,22 +24,22 @@ public class addIgnoringStickersAction {
         st.nextToken();
         if (       ( update.getMessage().getReplyToMessage() == null && ( !st.hasMoreTokens() ))
                 || ( (update.getMessage().getReplyToMessage() != null && !update.getMessage().getReplyToMessage().hasSticker()) && ( !st.hasMoreTokens() ) )  ) {
-            newmessage = "Для добавление стикер-пака в список исключений, " +
-                    "отправьте комманду, ответив на один из стикеров стикер-пака или написав ТОКЕН стикер-пака;";
-            im.SendAnswer(chat_id, name, newmessage);
+            newmessage.append("Для добавление стикер-пака в список исключений, " +
+                    "отправьте комманду, ответив на один из стикеров стикер-пака или написав ТОКЕН стикер-пака;");
+            im.SendAnswer(chat_id, name, String.valueOf(newmessage));
             return;
         }
         else {
             if ( update.getMessage().getReplyToMessage() == null && st.hasMoreTokens() ) {
                 sticker_url = st.nextToken();
                 if ( st.hasMoreTokens() ){
-                    newmessage = "Для добавление стикер-пака в список исключений, " +
-                            "отправьте комманду, ответив на один из стикеров стикер-пака или написав ТОКЕН стикер-пака;";
-                    im.SendAnswer(chat_id, name, newmessage);
+                    newmessage.append("Для добавление стикер-пака в список исключений, " +
+                            "отправьте комманду, ответив на один из стикеров стикер-пака или написав ТОКЕН стикер-пака;");
+                    im.SendAnswer(chat_id, name, String.valueOf(newmessage));
                     return;
                 }
                 if ( sticker_url.startsWith("https://t.me/addstickers/") ){
-                    sticker_url = sh.getTokenFromStickerUrl(sticker_url);
+                    sticker_url = instance.getTokenFromStickerUrl(sticker_url);
                 }
             }
             else if ( update.getMessage().getReplyToMessage().hasSticker() ) {
@@ -47,14 +47,17 @@ public class addIgnoringStickersAction {
                 im.deleteMessage(chat_id, update.getMessage().getReplyToMessage().getMessageId());
             }
 
-            if ( sh.checkStickerInList(sticker_url, chat_id, name) ) {
-                newmessage = "Стикер-пак " + sticker_url + " уже добавлен в список исключений;";
+            if ( instance.checkStickerInList(String.valueOf(chat_id), sticker_url) ) {
+                newmessage.append("Стикер-пак ").append(sticker_url).append(" уже добавлен в список исключений;");
             }
-            else if ( sh.getAddStickerStatus(sticker_url, chat_id, name) ){
-                newmessage = "Стикер-пак " + sticker_url + " успешно добавлен в список исключений;";
+            else if ( instance.addNewSticker(String.valueOf(chat_id), sticker_url, true) ){
+                newmessage.append("Стикер-пак ").append(sticker_url).append(" успешно добавлен в список исключений;");
+            }
+            else {
+                newmessage.append("Произошла ошибка при добавлении нового стикера");
             }
             im.deleteMessage(chat_id, update.getMessage().getMessageId());
         }
-        im.SendAnswer(chat_id, name, newmessage);
+        im.SendAnswer(chat_id, name, String.valueOf(newmessage));
     }
 }

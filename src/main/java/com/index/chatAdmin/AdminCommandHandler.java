@@ -3,8 +3,11 @@ package com.index.chatAdmin;
 import com.index.IndexMain;
 import com.index.chatAdmin.cases.*;
 import com.index.chatAdmin.handlers.banHandler;
+import com.index.data.sql.stickerInfoHolder;
+import com.index.data.sql.userInfoHolder;
 import com.index.dbHandler.dbMain;
 import com.index.dbHandler.handlers.dbGIFHandler;
+import com.index.dbHandler.handlers.dbRestrictionHandler;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatPermissions;
@@ -18,23 +21,35 @@ import java.util.StringTokenizer;
 
 public class AdminCommandHandler {
 
-    dbGIFHandler gifh = new dbGIFHandler();
     IndexMain im = new IndexMain();
     String newmessage;
 
     String name;
     String orig_message;
     Long user_id;
+    Long call_user_id;
     String user_name;
+    String re_name;
     long chat_id;
 
-    public AdminCommandHandler (Update update){
+    public AdminCommandHandler (Update update) {
         name = update.getMessage().getFrom().getFirstName();
         orig_message = update.getMessage().getText();
         user_id = update.getMessage().getFrom().getId();
         user_name = update.getMessage().getFrom().getUserName();
         chat_id = update.getMessage().getChatId();
-
+        if (update.getMessage().getReplyToMessage() != null){
+            if (update.getMessage().getReplyToMessage().getSenderChat() == null) {
+                call_user_id = update.getMessage().getReplyToMessage().getFrom().getId();
+            } else {
+                call_user_id = update.getMessage().getReplyToMessage().getSenderChat().getId();
+            }
+            if (update.getMessage().getReplyToMessage().getSenderChat() == null) {
+                re_name = update.getMessage().getReplyToMessage().getFrom().getFirstName();
+            } else {
+                re_name = update.getMessage().getReplyToMessage().getSenderChat().getTitle();
+            }
+        }
         if ( !CheckUserPermissions(update) ){
             // если правда - у пользователя достаточно прав
             return;
@@ -42,6 +57,13 @@ public class AdminCommandHandler {
         if (orig_message.startsWith("//delay"))
         {
             new delayAction(update);
+        }
+        else if (orig_message.equalsIgnoreCase("//save"))
+        {
+            userInfoHolder.getInstance().storeChat(String.valueOf(chat_id));
+        }
+        else if ( orig_message.equalsIgnoreCase("//get_info")){
+            im.SendAnswer(chat_id, user_name, userInfoHolder.getInstance().getTemplate(String.valueOf(chat_id), String.valueOf(user_id)).getAllInfo());
         }
         else if (orig_message.startsWith("//GetChatID")){
             newmessage = String.valueOf(chat_id);
@@ -90,10 +112,6 @@ public class AdminCommandHandler {
             newmessage = String.valueOf(update.getMessage().getReplyToMessage().getViaBot().getId());
             im.SendAnswer(chat_id, name, newmessage);
         }
-        else if (orig_message.startsWith("//dbStatus")){
-            newmessage = String.valueOf(gifh.UpdateRestrictionTime(chat_id, user_id, name, String.valueOf(1)));
-            im.SendAnswer(chat_id, name, newmessage);
-        }
         else if (orig_message.startsWith("//dbClose")){
             dbMain.close();
         }
@@ -130,9 +148,16 @@ public class AdminCommandHandler {
             }
         }
         else if ( orig_message.startsWith("//delete")){
-            final StringTokenizer st = new StringTokenizer(orig_message);
-            st.nextToken();
-            im.deleteMessage(im.YummyChannel_CHAT, Integer.parseInt(st.nextToken().toString()));
+            String ID;
+            if ( update.getMessage().getReplyToMessage() == null ) {
+                final StringTokenizer st = new StringTokenizer(orig_message);
+                st.nextToken();
+                ID = st.nextToken().toString();
+            }
+            else {
+                ID = String.valueOf(update.getMessage().getReplyToMessage().getMessageId());
+            }
+            im.deleteMessage(im.YummyChannel_CHAT, Integer.parseInt(ID));
         }
         else if ( orig_message.startsWith("//remove_url")){
             final StringTokenizer st = new StringTokenizer(orig_message);
@@ -152,11 +177,14 @@ public class AdminCommandHandler {
                 e.printStackTrace();
             }
         }
+        else if ( orig_message.startsWith("//test")){
+            im.SendAnswer(chat_id, name, userInfoHolder.getInstance().getAllTemplate());
+        }
     }
 
     boolean CheckUserPermissions (Update update){
         if ( update.getMessage().getFrom().getId() == 499220683 || update.getMessage().getFrom().getId() == 1087968824
-        || update.getMessage().getFrom().getId() == 1093703997 || update.getMessage().getFrom().getId() == 1087968824 )
+        || update.getMessage().getFrom().getId() == 1093703997 || update.getMessage().getFrom().getId() == 244171712 )
         {
             return true;
         }
