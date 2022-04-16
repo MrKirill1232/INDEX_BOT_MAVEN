@@ -2,6 +2,7 @@ package com.index.data.sql;
 
 import com.index.IndexMain;
 import com.index.dbHandler.dbMain;
+import org.apache.cassandra.index.Index;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -18,12 +19,13 @@ public class stickerInfoHolder {
     private final static String DELETE_URL_QUERY = "DELETE FROM sticker_ignore WHERE chat_id=?";
     private final static String INSERT_URL_QUERY = "INSERT INTO sticker_ignore (chat_id, sticker_url) VALUES (?,?)";
 
+    private final static String DELETE_ALL_URL_QUERY = "DELETE FROM sticker_ignore";
 
     protected stickerInfoHolder(){
         load();
         System.out.println("Загружено информация о игнорируемых стикерах для " + _ignoreStickers.size() + " чатов;");
         new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "Загружено информация о игнорируемых стикерах для " + _ignoreStickers.size() + " чатов;");
-        new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "Загружено количество игнорируемых стикеров для ями чата: " + _ignoreStickers.get(String.valueOf(new IndexMain().chat)).size() + ";");
+        new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "Загружено количество игнорируемых стикеров для ями чата: " + _ignoreStickers.get(String.valueOf(new IndexMain().YummyChannel_CHAT)).size() + ";");
     }
 
     public void load(){
@@ -133,6 +135,34 @@ public class stickerInfoHolder {
         {
             System.out.println("Ошибка при сохранении игнорируемых стикеров для чата " + chat_id + " - " + e);
             new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "@MrKirill1232 Ошибка при сохранении игнорируемых стикеров для чата " + chat_id + " - " + e);
+        }
+    }
+
+    public void storeAll(){
+        try ( Connection con = dbMain.getConnection() ){
+            // Clear previous entries.
+            try (PreparedStatement st = con.prepareStatement(DELETE_ALL_URL_QUERY))
+            {
+                st.execute();
+            }
+            for ( String chat_id : _ignoreStickers.keySet() ) {
+                // Insert all url back.
+                try (PreparedStatement st = con.prepareStatement(INSERT_URL_QUERY)) {
+                    st.setString(1, chat_id);
+                    for (String url : _ignoreStickers.get(chat_id)) {
+                        st.setString(2, url);
+                        st.addBatch();
+                    }
+                    st.executeBatch();
+                }
+            }
+            System.out.println("Игнорируемые стикеры для всех чатов сохранены в базе");
+            new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "Игнорируемые стикеры для всех чатов сохранены в базе;");
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Ошибка при сохранении игнорируемых стикеров для всех чатов - " + e);
+            new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), "@MrKirill1232 Ошибка при сохранении игнорируемых стикеров для всех чатов - " + e);
         }
     }
 

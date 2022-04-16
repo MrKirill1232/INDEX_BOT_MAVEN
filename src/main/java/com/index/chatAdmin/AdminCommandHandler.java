@@ -3,20 +3,24 @@ package com.index.chatAdmin;
 import com.index.IndexMain;
 import com.index.chatAdmin.cases.*;
 import com.index.chatAdmin.handlers.banHandler;
-import com.index.data.sql.stickerInfoHolder;
+import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.userInfoHolder;
 import com.index.dbHandler.dbMain;
-import com.index.dbHandler.handlers.dbGIFHandler;
-import com.index.dbHandler.handlers.dbRestrictionHandler;
-import org.telegram.telegrambots.meta.TelegramBotsApi;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
+import com.index.future.FutureAction;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatPermissions;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.ChatPermissions;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.StringTokenizer;
 
 public class AdminCommandHandler {
@@ -34,7 +38,7 @@ public class AdminCommandHandler {
 
     public AdminCommandHandler (Update update) {
         name = update.getMessage().getFrom().getFirstName();
-        orig_message = update.getMessage().getText();
+        orig_message = update.getMessage().getText().toLowerCase();
         user_id = update.getMessage().getFrom().getId();
         user_name = update.getMessage().getFrom().getUserName();
         chat_id = update.getMessage().getChatId();
@@ -58,30 +62,38 @@ public class AdminCommandHandler {
         {
             new delayAction(update);
         }
-        else if (orig_message.equalsIgnoreCase("//save"))
+        else if (orig_message.equalsIgnoreCase("//save_user"))
         {
             userInfoHolder.getInstance().storeChat(String.valueOf(chat_id));
         }
-        else if ( orig_message.equalsIgnoreCase("//get_info")){
-            im.SendAnswer(chat_id, user_name, userInfoHolder.getInstance().getTemplate(String.valueOf(chat_id), String.valueOf(user_id)).getAllInfo());
+        else if(orig_message.equals("//save_all")) {
+            FutureAction.getInstance().save();
         }
-        else if (orig_message.startsWith("//GetChatID")){
+        else if ( orig_message.equalsIgnoreCase("//get_info")){
+            String message =  userInfoHolder.getInstance().
+                    getTemplate(String.valueOf(chat_id),
+                            update.getMessage().getReplyToMessage() != null ?
+                                    String.valueOf(update.getMessage().getReplyToMessage().getFrom().getId()) :
+                                    String.valueOf(user_id)).getAllInfo();
+            im.SendAnswer(chat_id, user_name,message);
+        }
+        else if (orig_message.startsWith("//getchatid")){
             newmessage = String.valueOf(chat_id);
             im.SendAnswer(499220683, user_name, newmessage);
         }
-        else if (orig_message.startsWith("//AddIgnoringStickers")) {
+        else if (orig_message.startsWith("//addignoringstickers")) {
             new addIgnoringStickersAction(update);
         }
-        else if (orig_message.startsWith("//RemoveIgnoringStickers")) {
+        else if (orig_message.startsWith("//removeignoringstickers")) {
             new removeIgnoringStikersAction(update);
         }
-        else if (orig_message.startsWith("//ListOfIgnoringStickers")) {
+        else if (orig_message.startsWith("//listofignoringstickers")) {
             StringTokenizer st = new StringTokenizer(orig_message);
             st.nextToken();
             String sticker_url = "";
             if (st.hasMoreTokens()){
                 while (st.hasMoreTokens()){
-                    sticker_url += st.nextToken().toString();
+                    sticker_url += st.nextToken();
                 }
                 new listOfIgnoringStickersAction(update, sticker_url);
             }
@@ -96,29 +108,29 @@ public class AdminCommandHandler {
         else if (orig_message.startsWith("//unmute")) {
             new muteAction(update);
         }
-        else if (orig_message.startsWith("//getEntities")) {
+        else if (orig_message.startsWith("//getentities")) {
             new getEntitiesAction(update);
         }
         else if (orig_message.startsWith("//pin")) {
             new pinAction(update);
         }
-        else if (orig_message.startsWith("//getFileID")){
+        else if (orig_message.startsWith("//getfileid")){
             new getFileIDAction(update);
         }
-        else if (orig_message.startsWith("//getUserID")){
+        else if (orig_message.startsWith("//getuserid")){
             new getUserIDAction(update);
         }
-        else if (orig_message.startsWith("//getViaBotID")){
+        else if (orig_message.startsWith("//getviabotid")){
             newmessage = String.valueOf(update.getMessage().getReplyToMessage().getViaBot().getId());
             im.SendAnswer(chat_id, name, newmessage);
         }
-        else if (orig_message.startsWith("//dbClose")){
+        else if (orig_message.startsWith("//dbclose")){
             dbMain.close();
         }
         else if ( orig_message.startsWith("//ban")){
             new banHandler(update);
         }
-        else if ( orig_message.startsWith("//getMessageID")){
+        else if ( orig_message.startsWith("//getmessageid")){
             im.SendAnswer(chat_id, name, String.valueOf(update.getMessage().getReplyToMessage().getMessageId()));
         }
         else if ( orig_message.startsWith("//close_messages")){
@@ -152,7 +164,7 @@ public class AdminCommandHandler {
             if ( update.getMessage().getReplyToMessage() == null ) {
                 final StringTokenizer st = new StringTokenizer(orig_message);
                 st.nextToken();
-                ID = st.nextToken().toString();
+                ID = st.nextToken();
             }
             else {
                 ID = String.valueOf(update.getMessage().getReplyToMessage().getMessageId());
@@ -165,12 +177,13 @@ public class AdminCommandHandler {
             EditMessageText editMessageText = new EditMessageText();
             editMessageText.setDisableWebPagePreview(true);
             editMessageText.setChatId(String.valueOf(im.YummyChannel_CHAT));
-            editMessageText.setMessageId(Integer.valueOf(st.nextToken().toString()));
-            editMessageText.setText("Ну и от Кирилла.\n" +
-                    "Чат - не знаю, завтра или послезавтра открою наверное... Или уже после того как все закончится...\n" +
-                    "Если не скучно будет - можете вот исходники бота поколупать :)\n" +
-                    "https://github.com/MrKirill1232/INDEX_BOT_MAVEN\n" +
-                    "Бот кое-как работает, по-удалял там что Вам не нужно видеть, не думаю что в ближайшее время я им буду заниматься :(");
+            editMessageText.setMessageId(Integer.valueOf(st.nextToken()));
+            editMessageText.setText("""
+                    Ну и от Кирилла.
+                    Чат - не знаю, завтра или послезавтра открою наверное... Или уже после того как все закончится...
+                    Если не скучно будет - можете вот исходники бота поколупать :)
+                    https://github.com/MrKirill1232/INDEX_BOT_MAVEN
+                    Бот кое-как работает, по-удалял там что Вам не нужно видеть, не думаю что в ближайшее время я им буду заниматься :(""");
             try {
                 im.execute(editMessageText);
             } catch (TelegramApiException e) {
@@ -179,6 +192,45 @@ public class AdminCommandHandler {
         }
         else if ( orig_message.startsWith("//test")){
             im.SendAnswer(chat_id, name, userInfoHolder.getInstance().getAllTemplate());
+        }
+        if ( update.getMessage().getText().toLowerCase().startsWith("//online")) {
+            InlineKeyboardButton button = new InlineKeyboardButton();
+            button.setText("Наркутить онлайн");
+            button.setSwitchInlineQuery("Онлайн успешно накручен!");
+            button.setCallbackData("Онлайн успешно накручен!");
+
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+            List<InlineKeyboardButton> rowInline = new ArrayList<>();
+            rowInline.add(button);
+            rowsInline.add(rowInline);
+            markupInline.setKeyboard(rowsInline);
+            SendMessage message = new SendMessage();
+            message.setReplyMarkup(markupInline);
+            message.setChatId(String.valueOf(update.getMessage().getChatId()));
+            message.setText("Желаете накрутить онлайн на Asterios?");
+            try {
+                im.execute(message);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else if (orig_message.equals("//addtodb")) {
+            Message umu = update.getMessage().getReplyToMessage();
+            restrictionFilesHolder rfh = restrictionFilesHolder.getInstance();
+            if (umu.hasAnimation()) {
+                rfh.addRestrictionGIFIDs(umu.getAnimation().getFileUniqueId());
+            }
+            else if ( umu.hasPhoto() ) {
+                rfh.addRestrictionPhotoIDs(umu.getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileSize)).orElse(null).getFileUniqueId());
+            }
+            else if ( umu.hasSticker() ) {
+                rfh.addRestrictionStickerIDs(umu.getSticker().getSetName());
+            }
+            else if ( umu.hasVideo() ) {
+                rfh.addRestrictionVideoIDs(umu.getVideo().getFileUniqueId());
+            }
+            rfh.storeMe();
         }
     }
 

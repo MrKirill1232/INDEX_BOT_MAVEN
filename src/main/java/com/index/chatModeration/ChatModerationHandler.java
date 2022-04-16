@@ -2,91 +2,170 @@ package com.index.chatModeration;
 
 import com.index.IndexMain;
 import com.index.chatAdmin.handlers.muteHandler;
-import com.index.chatModeration.cases.GifAction;
-import com.index.chatModeration.cases.StickerAction;
 import com.index.chatModeration.moderators_chat.ModeratorChat;
+import com.index.data.sql.restrictionFilesHolder;
+import com.index.data.sql.stickerInfoHolder;
 import com.index.data.sql.userInfoHolder;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
 
 public class ChatModerationHandler {
 
     IndexMain im = new IndexMain();
     muteHandler mh = new muteHandler();
     userInfoHolder holder = userInfoHolder.getInstance();
-    String newmessage;
     String original_message;
+    String user_id;
+    String update_name;
+    String chat_id;
+    Long curr_time;
+    Long mute_time;
+    Long next_reset_time;
+    Long curr_mute_time;
+    String message_id;
 
-    final long curr_time = System.currentTimeMillis()/1000;
+    List<String> ignoreUsers = new ArrayList<>(); // TODO - PUT IN SINGLETON
 
-    String name_from;
-    long user_id;
+    private void setVariables(Update update){
+        Message temp = update.getMessage();
+        original_message = temp.hasText() ? temp.getText() : temp.getCaption() != null ? temp.getCaption() : null;
+        user_id = temp.getSenderChat() == null ? String.valueOf(temp.getFrom().getId()) : String.valueOf(temp.getSenderChat().getId());
+        update_name = temp.getSenderChat() == null ? temp.getFrom().getFirstName() : temp.getSenderChat().getTitle();
+        chat_id = String.valueOf(temp.getChatId());
+        Calendar calendar = Calendar.getInstance();
+        curr_time = calendar.getTimeInMillis() / 1000;
+        int restriction_time = 2; // minutes
+        calendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE) + restriction_time);
+        mute_time = calendar.getTimeInMillis() / 1000;
+        //ignoreUsers.add("499220683");       // MrKirill1232
+        ignoreUsers.add("1087968824");      // YummyChannel
+        ignoreUsers.add("1093703997");      // Altair
+        ignoreUsers.add("-1001454322922L"); // YummyChannel_CHAT
+        // TODO: REMADE PUNISHMENT SYSTEM
+        if ( !holder.checkUserInDB(String.valueOf(chat_id), String.valueOf(user_id)) ) {
+            addUserInDataBase(false);
+        }
+        curr_mute_time = holder.getTemplate(chat_id, user_id).get_restriction_time() != null ? Long.parseLong(holder.getTemplate(chat_id, user_id).get_restriction_time()) : 0;
+        next_reset_time = holder.getTemplate(chat_id, user_id).get_next_message_reset() != null ? Long.parseLong(holder.getTemplate(chat_id, user_id).get_next_message_reset()) : 0;
+        message_id = String.valueOf(update.getMessage().getMessageId());
+    }
 
-    String file_id;
-
-
+    protected void addUserInDataBase(Boolean announce_type) {
+        if (announce_type) im.SendAnswer(chat_id, update_name, "Пробую добавить...");
+        if (holder.addNewUser(String.valueOf(chat_id), update_name, String.valueOf(user_id), 0, 0, String.valueOf(curr_time), 0, String.valueOf(0), null)){
+            if (announce_type) im.SendAnswer(chat_id, "Index - DataBase", "Пользователь " + update_name + " добавлен в базу.");
+        }
+        else {
+            sendMessage("Ошибка при добавлении пользователя " + update_name + " в базу. @MrKirill1232");
+        }
+    }
+    protected void deleteMessage(){
+        im.deleteMessage(Long.parseLong(chat_id), Integer.parseInt(message_id));
+    }
+    protected void sendMessage(String message){
+        im.SendAnswer(Long.parseLong(chat_id), "Index", message, "null", 0);
+    }
+    protected void callMute(Calendar time, String comment, boolean announce){
+        if (announce) sendMessage(update_name + " - " + comment + " Разблокировка - " + time.getTime());
+        mh.tryMute(Long.parseLong(chat_id), Long.parseLong(user_id), "Index", update_name, time.getTimeInMillis()/1000, true, comment);
+    }
     public ChatModerationHandler (Update update)
     {
         if ( update.getMessage() == null )
         {
             return;
         }
-        if ( update.getMessage().getSenderChat() == null ) {
-            user_id = update.getMessage().getFrom().getId();
-        } else {
-            user_id = update.getMessage().getSenderChat().getId();
+        setVariables(update);
+        if ( ( chat_id.equals(String.valueOf(im.YummyChannel_CHAT)) && im.RESEND ) ){
+            new ModeratorChat(update, "Forwarding");
         }
-        if (update.getMessage() !=null && update.getMessage().getSenderChat() == null) {
-            name_from = update.getMessage().getFrom().getFirstName();
-        } else {
-            name_from = update.getMessage().getSenderChat().getTitle();
-        }
-
-        Long chat_id = update.getMessage().getChatId();
-        String name = update.getMessage().getFrom().getFirstName();
-
-        if ( update.getMessage().getChatId() == im.YummyChannel_CHAT){
-            if (im.RESEND) {
-                new ModeratorChat(update, "Forwarding");
-            }
-        }
-
-        if ( update.getMessage().getChatId() == im.YummyReChat )
-        {
+        if ( chat_id.equals(String.valueOf(im.YummyReChat)) ) {
             new ModeratorChat(update, "Translate");
         }
-
-
-        if (CheckUserPermissions(update)) {
+        if ( ignoreUsers.contains(String.valueOf(user_id)) || chat_id.equals(String.valueOf(im.YummyReChat)) ){
             return;
         }
-        boolean check_user = holder.checkUserInDB(String.valueOf(chat_id), String.valueOf(user_id));
-        if (!check_user) {
-            im.SendAnswer(chat_id, name, "Пробую добавить...");
-            holder.addNewUser(String.valueOf(chat_id), name_from, String.valueOf(user_id), 0, 0, String.valueOf(curr_time), 0, String.valueOf(0), null);
-            newmessage = "Пользователь " + name_from + " добавлен в базу";
-            im.SendAnswer(chat_id, name, newmessage);
+        if ( curr_mute_time > curr_time){
+            deleteMessage();
+            return;
         }
-        if ( Long.parseLong(holder.getTemplate(String.valueOf(chat_id), String.valueOf(user_id)).get_restriction_time()) > curr_time){
-            im.deleteMessage(chat_id, update.getMessage().getMessageId());
+        if ( next_reset_time < curr_time ) {
+            resetFields();
         }
-        if (update.getMessage().hasAnimation()) {
-            if (false) {
-                new GifAction(update);
+        CheckRestriction(update);
+    }
+
+    protected String sendGreeting(){
+        return "Привет " + update_name +"! Добро пожаловать в " + "Чат YummyAnime" + " :)\n" +
+                "Правила можешь найти здесь - [*клик*](https://t.me/c/1454322922/65922/)\n" +
+                "Если интересует как обойти блокировку сайта - [*клик*](https://t.me/c/1454322922/21351/)";
+    }
+
+    private void CheckRestriction(Update update){
+        Calendar calendar = Calendar.getInstance();
+        Message temp = update.getMessage();
+        restrictionFilesHolder rfh = restrictionFilesHolder.getInstance();
+        String file_id;
+        boolean need_to_announce = false;
+        if ( temp.hasAnimation() ) {
+            file_id = temp.getAnimation().getFileUniqueId();
+            if ( rfh.isRestrictionGIFIDs(file_id) || black_list_gif(file_id) ) {
+                new ModeratorChat(update, "DeleteMe");
+                deleteMessage();
+                calendar.add(Calendar.MINUTE, 10);
+                callMute(calendar, "GIF файлы подозрительного характера - автоматическая блокировка;\n" + update, false);
+                need_to_announce = true;
             } else {
-                CheckGIFinDBResriction(update);
+                int max_available_gif = 5;
+                int gif_count = holder.getTemplate(chat_id, user_id).get_gif_count();
+                if ( gif_count > max_available_gif ) {
+                    new ModeratorChat(update, "DeleteMe");
+                    deleteMessage();
+                    calendar.add(Calendar.MINUTE, 2);
+                    callMute(calendar, "Спам GIF файлами - автоматическая блокировка;", true);
+                } else {
+                    holder.updateGifCount(chat_id, user_id, ( gif_count + 1 ));
+                }
             }
         }
-        else if (update.getMessage().hasSticker()) {
-            if (true){
-                new StickerAction(update);
+        if ( temp.hasVideo() ){
+            file_id = temp.getAnimation().getFileUniqueId();
+            if ( rfh.isRestrictionVideoIDs(file_id) || black_list_video(file_id) ) {
+                new ModeratorChat(update, "DeleteMe");
+                deleteMessage();
+                calendar.add(Calendar.MINUTE, 10);
+                callMute(calendar, "Видео файлы подозрительного характера - автоматическая блокировка;\n" + update, false);
+                need_to_announce = true;
             }
         }
-        else if ( update.getMessage().hasViaBot() ){
-            if ( GetSa4tikBot(update) ){
-                im.deleteMessage(chat_id, update.getMessage().getMessageId());
+        if ( temp.hasSticker() ) {
+            file_id = temp.getSticker().getSetName();
+            if ( rfh.isRestrictionStickerIDs(file_id) || file_id.equalsIgnoreCase("gayman02") ) {
+                new ModeratorChat(update, "DeleteMe");
+                deleteMessage();
+                calendar.add(Calendar.MINUTE, 10);
+                callMute(calendar, "Стикеры подозрительного характера - автоматическая блокировка;\n" + update, false);
+            } else {
+                int sticker_available_count = 10;
+                int sticker_count = holder.getTemplate(chat_id, user_id).get_sticker_count();
+                if ( !stickerInfoHolder.getInstance().checkStickerInList(String.valueOf(chat_id), file_id) ) {
+                    new ModeratorChat(update, "DeleteMe");
+                    deleteMessage();
+                }
+                if ( sticker_count > sticker_available_count ) {
+                    new ModeratorChat(update, "DeleteMe");
+                    deleteMessage();
+                    calendar.add(Calendar.MINUTE, 2);
+                    callMute(calendar, "Спам стрикерами - Автоматическая блокировка;", true);
+                }
+                holder.updateStickerCount(chat_id, user_id, ( sticker_count + 1 ) );
             }
         }
-        else if (       update.getMessage().hasVoice()
+        if ( update.getMessage().hasVoice()
                 || update.getMessage().hasDocument()
                 || update.getMessage().hasText()
                 || update.getMessage().hasAudio()
@@ -100,122 +179,54 @@ public class ChatModerationHandler {
                 || update.getMessage().hasSuccessfulPayment()
                 || update.getMessage().hasInvoice()
                 || update.getMessage().hasVideo()
-                || update.getMessage().hasVideoNote()){
-            if ( update.getMessage().hasVideo() ){
-                if ( black_list_video(update) ){
-                    new ModeratorChat(update, "DeleteMe");
-                    im.deleteMessage(chat_id, update.getMessage().getMessageId());
-                    im.SendAnswer(chat_id, name, "@MrKirill1232 - иди сюда, тут расчленёнка от " + update.getMessage().getFrom());
-                    mh.tryMute(chat_id, user_id, name, name_from, 120, true, String.valueOf(update.getMessage().getMessageId()));
-                }
-            }
-        }
-        /**
-         *         // ПРОВЕРКА И ОТПРАВКА СООБЩЕНИЯ ДЛЯ НОВЫХ ЮЗВЕРЕЙ
-         *         // update.getChatMember().getNewChatMember().getStatus()
-         **/
-        if (update.getMessage().getNewChatMembers().stream().findFirst().isPresent()){
-            new ModeratorChat(update, "DeleteMe");
-            im.deleteMessage(chat_id, update.getMessage().getMessageId());
-        }
-        /*else if (update.getMessage().getNewChatMembers().get(0) != null){
-            newmessage = "Привет " + String.valueOf(name) +"! Добро пожаловать в " + update.getMessage().getChat().getTitle() + " :)\n" +
-                    "Правила можешь найти здесь - [*клик*](https://t.me/c/1454322922/65922/)\n" +
-                    "Если интересует как обойти блокировку сайта - [*клик*](https://t.me/c/1454322922/21351/)";
-            //im.SendAnswer(chat_id, name, newmessage,"Markdown", update.getMessage().getMessageId());
+                || update.getMessage().hasVideoNote() ) {
 
-        }*/
-    }
-
-    boolean GetSa4tikBot(Update update){
-        original_message = update.getMessage().getText();
+        }
         if (update.getMessage().hasViaBot())
         {
-            return (update.getMessage().getViaBot().getId() == (1745626430))
-                    || (update.getMessage().getViaBot().getId() == (1341194997));
-        }
-        return false;
-    }
-
-    boolean CheckUserPermissions (Update update){
-        long MrKirill1232 = 499220683;
-        long YummyChannel = 1087968824;
-        long Altair = 1093703997;
-        long YummyChannel_CHAT = -1001454322922L;
-        if ( (/*update.getMessage().getFrom().getId() == MrKirill1232
-                ||*/ update.getMessage().getFrom().getId() == YummyChannel
-                /*|| update.getMessage().getFrom().getId() == Altair
-                || update.getMessage().getChatId() == YummyChannel_CHAT*/ ) )
-        {
-            return true;
-        }
-        else return update.getMessage().getChatId() == im.YummyReChat;
-    }
-
-    boolean CheckGIFinDBResriction(Update update) {
-        long chat_id = update.getMessage().getChatId();
-
-        long curr_time = System.currentTimeMillis() / 1000;
-        long max_restriction_time = 1; // mins
-        long restriction_time = curr_time + (max_restriction_time * 60);
-        String name = "Index_BOT";
-        if (update.getMessage().hasAnimation()) {
-            boolean check_user = holder.checkUserInDB(String.valueOf(chat_id), String.valueOf(user_id));
-            if (!check_user) {
-                im.SendAnswer(chat_id, name, "Пробую добавить...");
-                holder.addNewUser(String.valueOf(chat_id), name_from, String.valueOf(user_id), 0, 0, String.valueOf(curr_time), 0, String.valueOf(0), null);
-                newmessage = "Пользователь " + name_from + " добавлен в базу";
-                im.SendAnswer(chat_id, name, newmessage);
+            if ( temp.getViaBot().getId() == (1745626430) ||
+                    temp.getViaBot().getId() == (1341194997)){
+                new ModeratorChat(update, "DeleteMe");
+                deleteMessage();
             }
         }
-        long last_restriction_time = Long.parseLong(holder.getTemplate(String.valueOf(chat_id), String.valueOf(user_id)).get_restriction_time());
-        if (last_restriction_time <= curr_time) {
-            holder.updateNextMessageReset(String.valueOf(chat_id), String.valueOf(user_id), String.valueOf(restriction_time));
+        if ( temp.getNewChatMembers().stream().findFirst().isPresent() ){
+            new ModeratorChat(update, "DeleteMe");
+            deleteMessage();
+            if ( false ) {
+                sendMessage(sendGreeting());
+            }
+        }
+        if ( need_to_announce ) {
+            sendMessage("@MrKirill1232 - иди сюда, тут расчленёнка от " + update.getMessage().getFrom());
+        }
+    }
+
+    protected void resetFields() {
+            holder.updateNextMessageReset(String.valueOf(chat_id), String.valueOf(user_id), String.valueOf(mute_time));
             holder.updateGifCount(String.valueOf(chat_id), String.valueOf(user_id), 0);
             holder.updateStickerCount(String.valueOf(chat_id), String.valueOf(user_id), 0);
-        }
-        if (black_list_gif(update)) {
-            im.deleteMessage(chat_id, update.getMessage().getMessageId());
-            im.SendAnswer(chat_id, name, "@MrKirill1232 - иди сюда, тут расчленёнка от " + update.getMessage().getFrom());
-            mh.tryMute(chat_id, user_id, name, name_from, 120, true);
-
-        }
-        if (update.getMessage().getAnimation().getFileUniqueId().startsWith("AgADZBMAAiYx6Es")
-                || update.getMessage().getAnimation().getFileUniqueId().startsWith("AgADkRIAAs5esUg")
-                || update.getMessage().getAnimation().getFileUniqueId().startsWith("AgADVwQAAsaCKFM")
-        ) {
-            im.deleteMessage(chat_id, update.getMessage().getMessageId());
-        }
-        int gif_count = holder.getTemplate(String.valueOf(chat_id), String.valueOf(user_id)).get_gif_count();
-        int new_gif_count = gif_count + 1;
-        if (gif_count == 2 || gif_count == 1 || gif_count == 0) {
-            holder.updateGifCount(String.valueOf(chat_id), String.valueOf(user_id), new_gif_count);
-        } else if (gif_count == 3) {
-            long mute_time_in_seconds = 120;
-            long mute_time = curr_time + mute_time_in_seconds;
-            holder.updateGifCount(String.valueOf(chat_id), String.valueOf(user_id), new_gif_count);
-            mh.tryMute(chat_id, user_id, name, name_from, mute_time, true);
-            im.SendAnswer(chat_id, name, "За спам ГИФ файлами, блокируем " + name_from + " на " + mute_time_in_seconds + " секунд :)");
-        } else {
-            im.deleteMessage(chat_id, update.getMessage().getMessageId());
-        }
-        return true;
     }
 
-    private boolean black_list_gif (Update update){
-        file_id = update.getMessage().getAnimation().getFileUniqueId();
-        return file_id.startsWith("AgADVAIAAqTNAUs")
-                || file_id.startsWith("AQADVAIAAqTNAUty")
-                || file_id.startsWith("AgADmAkAAr5RIEk")
-                || file_id.startsWith("AgAD9AEAAjykEFA")
-                || file_id.startsWith("AgADYwUAAnd7AVA")
-                || file_id.startsWith("AgADrQsAArcB4Uk")
-                || file_id.startsWith("AQADrQsAArcB4Uly")
-                || file_id.startsWith("AgADzhIAAvmVyUg");
+    private boolean black_list_gif (String file_id){
+        List<String> temp = new ArrayList<>();
+        temp.add("AgADVAIAAqTNAUs");
+        temp.add("AQADVAIAAqTNAUty");
+        temp.add("AgADmAkAAr5RIEk");
+        temp.add("AgAD9AEAAjykEFA");
+        temp.add("AgADYwUAAnd7AVA");
+        temp.add("AgADrQsAArcB4Uk");
+        temp.add("AQADrQsAArcB4Uly");
+        temp.add("AgADzhIAAvmVyUg");
+        temp.add("AgADZBMAAiYx6Es");
+        temp.add("AgADkRIAAs5esUg");
+        temp.add("AgADVwQAAsaCKFM");
+        return temp.contains(file_id);
     }
 
-    private boolean black_list_video (Update update){
-        file_id = update.getMessage().getVideo().getFileUniqueId();
-        return file_id.startsWith("AgADhRMAAm4AAfBL");
+    private boolean black_list_video (String file_id){
+        List<String> temp = new ArrayList<>();
+        temp.add("AgADhRMAAm4AAfBL");
+        return temp.contains(file_id);
     }
 }

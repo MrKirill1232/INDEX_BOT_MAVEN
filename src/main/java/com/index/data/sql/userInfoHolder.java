@@ -13,6 +13,7 @@ public class userInfoHolder {
     private static final String INSERT_INFO_QUERY = "INSERT INTO user_params (chat_id, user_name, user_id, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as) VALUES (?,?,?,?,?,?,?,?,?)";
     private final static String DELETE_INFO_QUERY = "DELETE FROM user_params WHERE chat_id=? AND user_id=?";
     private final static String DELETE_CHAT_INFO_QUERY = "DELETE FROM user_params WHERE chat_id=?";
+    private final static String DELETE_ALL_INFO_QUERY = "DELETE FROM user_params";
 
     private Map<String, Map<String, userInfoTemplate>> _template = new HashMap<>();
 
@@ -47,6 +48,7 @@ public class userInfoHolder {
             for (String chat_id_index : chat_id_list) {
                 st.setString(1, chat_id_index);
                 try (ResultSet rset = st.executeQuery()){
+                    Map<String, userInfoTemplate> temporary = new HashMap<>();
                     while (rset.next()){
                         StringTokenizer know_as_tokens = new StringTokenizer(rset.getString("know_as"));
                         List<String> know_as = new ArrayList<>();
@@ -54,12 +56,13 @@ public class userInfoHolder {
                             know_as.add(know_as_tokens.nextToken());
                         }
                         know_as = null;
-                        _template.put(chat_id_index, Map.of(rset.getString("user_id"),
+                        temporary.put(rset.getString("user_id"),
                                 new userInfoTemplate(rset.getString("user_name"), rset.getInt("sticker_count"),
                                         rset.getInt("gif_count"), rset.getString("next_message_reset"),
                                         rset.getInt("restriction_type"), rset.getString("restriction_time"),
-                                        know_as)));
+                                        know_as));
                     }
+                    _template.put(chat_id_index, temporary);
                 }
             }
         } catch (SQLException e) {
@@ -79,16 +82,16 @@ public class userInfoHolder {
             // Insert all info back.
             try (PreparedStatement st = con.prepareStatement(INSERT_INFO_QUERY)) {
                 st.setString(1, chat_id);
-                for ( String user_id : _template.keySet() ) {
-                    userInfoTemplate template = getInstance().getTemplate(chat_id, user_id);
-                    st.setString(2, template.get_user_name());
+                for ( String user_id : _template.get(chat_id).keySet() ) {
+                    userInfoTemplate template = _template.get(chat_id).get(user_id);
+                    st.setString(2, template.get_user_name() == null ? "" : template.get_user_name());
                     st.setString(3, user_id);
                     st.setInt(4, template.get_sticker_count());
                     st.setInt(5, template.get_gif_count());
                     st.setString(6, template.get_next_message_reset());
                     st.setInt(7, template.get_restriction_type());
                     st.setString(8, template.get_restriction_time());
-                    st.setString(9, template.get_know_as().toString());
+                    st.setString(9, template.get_know_as() == null ? "" : template.get_know_as().toString());
                     st.addBatch();
                 }
                 st.executeBatch();
@@ -104,7 +107,44 @@ public class userInfoHolder {
         }
     }
 
-    public void storeMe(String chat_id, String user_id)
+    public void storeAll(){
+        try (Connection con = dbMain.getConnection())
+        {
+            // Clear previous entries.
+            try (PreparedStatement st = con.prepareStatement(DELETE_ALL_INFO_QUERY))
+            {
+                st.execute();
+            }
+            // Insert all info back.
+            for ( String chat_id : _template.keySet() ) {
+                try (PreparedStatement st = con.prepareStatement(INSERT_INFO_QUERY)) {
+                    st.setString(1, chat_id);
+                    for (String user_id : _template.get(chat_id).keySet()) {
+                        userInfoTemplate template = _template.get(chat_id).get(user_id);
+                        st.setString(2, template.get_user_name() == null ? "" : template.get_user_name());
+                        st.setString(3, user_id);
+                        st.setInt(4, template.get_sticker_count());
+                        st.setInt(5, template.get_gif_count());
+                        st.setString(6, template.get_next_message_reset());
+                        st.setInt(7, template.get_restriction_type());
+                        st.setString(8, template.get_restriction_time());
+                        st.setString(9, template.get_know_as() == null ? "" : template.get_know_as().toString());
+                        st.addBatch();
+                    }
+                    st.executeBatch();
+                }
+                System.out.println(getClass().getSimpleName()  + ": Информация о всех пользователя для чата " + chat_id + " была сохранены в базе");
+                new IndexMain().SendAnswer(Long.parseLong(chat_id), getClass().getSimpleName(), getClass().getSimpleName()  + ": Информация о всех пользователя для чата " + chat_id + " была сохранены в базе");
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println(getClass().getSimpleName()  + ": Ошибка при сохранении информации о пользователях для всех чатов \n" + e);
+            new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), getClass().getSimpleName()  + ": Ошибка при сохранении информации о пользователях для всех чатов @MrKirill1232 \n" + e);
+        }
+    }
+
+    public boolean storeMe(String chat_id, String user_id)
     {
         try (Connection con = dbMain.getConnection())
         {
@@ -130,45 +170,45 @@ public class userInfoHolder {
                 st.setString(9, template.get_know_as() == null ? "" : template.get_know_as().toString());
                 st.execute();
             }
-            System.out.println(getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранены в базе");
-            new IndexMain().SendAnswer(Long.parseLong(chat_id), getClass().getSimpleName(), getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранены в базе");
-
+            System.out.println(getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранена в базе");
+            new IndexMain().SendAnswer(Long.parseLong(chat_id), getClass().getSimpleName(), getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранена в базе");
+            return true;
         }
         catch (SQLException e)
         {
             System.out.println(getClass().getSimpleName()  + ": Ошибка при сохранении информации о пользователе " + user_id + " " + getInstance().getTemplate(chat_id, user_id).get_user_name() + " для чата " + chat_id + "\n" + e);
             new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), getClass().getSimpleName()  + ": Ошибка при сохранении информации о пользователе " + user_id + " " + getInstance().getTemplate(chat_id, user_id).get_user_name() + " для чата " + chat_id + " @MrKirill1232 \n" + e);
+            return false;
         }
     }
 
-    public void addNewUser(String chat_id, String user_name, String user_id, int sticker_count, int gif_count, String next_message_reset, int restriction_type, String restriction_time, List<String> know_as){
-        Map<String, userInfoTemplate> template;
-        if ( !_template.containsKey(chat_id) ) {
-            _template.put(chat_id, Map.of(user_id, new userInfoTemplate(user_name, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as)));
+    public boolean addNewUser(String chat_id, String user_name, String user_id, int sticker_count, int gif_count, String next_message_reset, int restriction_type, String restriction_time, List<String> know_as){
+        if ( _template.get(chat_id) != null && _template.get(chat_id).containsKey(user_id) ){
+            return false;
         }
-        else {
-            if ( _template.get(chat_id).containsKey(user_id) ){
-                return;
-            }
-            _template
-                    .get(chat_id)
-                    .put(
-                    user_id,
-                    new userInfoTemplate(
-                            user_name,
-                            sticker_count,
-                            gif_count,
-                            next_message_reset,
-                            restriction_type,
-                            restriction_time,
-                            know_as));
+        Map<String, userInfoTemplate> template = _template.get(chat_id) == null ? new HashMap<>() : _template.get(chat_id);
+        template.put(
+                user_id,
+                new userInfoTemplate(
+                        user_name,
+                        sticker_count,
+                        gif_count,
+                        next_message_reset,
+                        restriction_type,
+                        restriction_time,
+                        know_as));
+        _template.putIfAbsent(chat_id, null);
+        _template.replace(chat_id, template);
+        return storeMe(chat_id, user_id);
         }
-        storeMe(chat_id, user_id);
-    }
 
     public void updateExistUser(String chat_id, String user_name, String user_id, int sticker_count, int gif_count, String next_message_reset, int restriction_type, String restriction_time, List<String> know_as){
-        _template.replace(chat_id, Map.of(user_id, new userInfoTemplate(user_name, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as)));
-        //_template.get(chat_id).put(user_id, new userInfoTemplate(user_name, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as));
+        //_template.replace(chat_id, Map.of(user_id, new userInfoTemplate(user_name, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as)));
+        Map<String, userInfoTemplate> temporary = _template.get(chat_id);
+        temporary.replace(user_id, new userInfoTemplate(user_name, sticker_count, gif_count, next_message_reset, restriction_type, restriction_time, know_as));
+        _template.replace(chat_id, temporary);
+        //System.out.println("ну типо заменил");
+        //new IndexMain().SendAnswer(Long.parseLong(chat_id), getClass().getSimpleName(), getClass().getSimpleName()  + ": ну типо заменил");
     }
 
     public void updateUserName(String chat_id, String user_id, String new_name){
@@ -209,6 +249,9 @@ public class userInfoHolder {
     }
 
     public boolean checkUserInDB(String chat_id, String user_id){
+        if ( _template.get(chat_id) == null ) {
+            return false;
+        }
         return _template.containsKey(chat_id) && _template.get(chat_id).containsKey(user_id);
     }
 
@@ -219,10 +262,11 @@ public class userInfoHolder {
     public String getAllTemplate(){
         StringBuilder umu = new StringBuilder();
         for ( String chat : _template.keySet() ){
-            umu.append("CHAT: ").append(chat).append("\n").append("---");
+            umu.append("CHAT: ").append(chat).append("\n").append("---").append("\n");
             for ( String user : _template.get(chat).keySet() ){
                 umu.append("USER - ").append(user).append("\n");
                 umu.append(_template.get(chat).get(user).getAllInfo());
+                umu.append("\n").append("---").append("\n");
             }
         }
         return umu.toString();
