@@ -1,31 +1,38 @@
 package com.index;
 
 import com.index.chatAdmin.AdminCommandHandler;
-import com.index.chatAdmin.handlers.muteHandler;
 import com.index.chatModeration.ChatModerationHandler;
 import com.index.chatModeration.moderators_chat.ModeratorChat;
-import org.jetbrains.annotations.Async;
+import com.index.future.FutureAction;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.net.CacheRequest;
+import java.util.Calendar;
+
 public class IndexMain extends TelegramLongPollingBot {
-    public Long chat = (-1001608680834L);
-    public long YummyChannel_CHAT = -1001454322922L;
+    public Long chat = (-1001608680834L);               // 123
+    public long YummyChannel_CHAT = -1001454322922L;    // YummyChat
     public long YummyReChat = -1001362165830L;
     public boolean RESEND = true;
 
     @Override
     public void onUpdateReceived(Update update) {
 
+        if (FutureAction.getInstance().getNextSave() <= Calendar.getInstance().getTimeInMillis()){
+            FutureAction.getInstance().save();
+        }
         /*
-
-        if (!update.getMessage().getChatId().equals(chat))
+        if (update.getMessage().getFrom().getId() == (499220683) ||
+           (update.getMessage().getFrom().getId() == (1093703997) ) )
         {
+        }
+        else {
             return;
-        }*/
+        }
         /*
         BanChatMember BAN = new BanChatMember();
         BAN.setChatId(String.valueOf(update.getMessage().getChatId()));
@@ -39,9 +46,13 @@ public class IndexMain extends TelegramLongPollingBot {
         */
 
         if (update.hasMessage() && update.getMessage().hasText()) {
+            /*
+
             if ( update.getMessage().getReplyToMessage()!=null && (update.getMessage().getReplyToMessage().getMessageId()==407281
                     ||
             update.getMessage().getReplyToMessage().getMessageId() == 407297
+                    ||
+            update.getMessage().getReplyToMessage().getMessageId() == 405488
                     ||
             update.getMessage().getReplyToMessage().getMessageId() == 407306) && update.getMessage().getFrom().getId() != 499220683
             ){
@@ -50,6 +61,8 @@ public class IndexMain extends TelegramLongPollingBot {
                         System.currentTimeMillis()/1000+92000, true, "ПОЛИТИЧЕСКИЙ СПАМ");
                 deleteMessage(update.getMessage().getChatId(), update.getMessage().getMessageId());
             }
+
+            */
 
             String message_text = update.getMessage().getText();
             if ( false ) {
@@ -93,6 +106,9 @@ public class IndexMain extends TelegramLongPollingBot {
         }
     }
 
+    public void SendAnswer(String ChatID, String userName, String text){
+        SendAnswer(Long.parseLong(ChatID), userName, text, "null", 0);
+    }
     public void SendAnswer(long ChatID, String userName, String text){
         SendAnswer(ChatID, userName, text, "null", 0);
     }
@@ -102,16 +118,14 @@ public class IndexMain extends TelegramLongPollingBot {
 
     public void SendAnswer(long ChatID, String userName, String text, String syntaxis, int ReplyOn){
         SendMessage message = new SendMessage();
-        if (syntaxis.equals("Markdown")){
-            message.enableMarkdown(true);
-        }
-        else if (syntaxis.equals("HTML")){
-            message.enableHtml(true);
-        }
-        else if (syntaxis.equals("null")){
-            message.enableMarkdown(false);
-            message.enableHtml(false);
-            message.enableMarkdownV2(false);
+        switch (syntaxis) {
+            case "Markdown" -> message.enableMarkdown(true);
+            case "HTML" -> message.enableHtml(true);
+            case "null" -> {
+                message.enableMarkdown(false);
+                message.enableHtml(false);
+                message.enableMarkdownV2(false);
+            }
         }
         message.setChatId(Long.toString(ChatID));
         message.setText(text);
@@ -136,12 +150,12 @@ public class IndexMain extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "";
+        return "Index";
     }
 
     @Override
     public String getBotToken() {
-        return "";
+        return "123456789:qwerty";
     }
 
 }

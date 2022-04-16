@@ -3,6 +3,7 @@ package com.index.dbHandler;
 import org.mariadb.jdbc.MariaDbPoolDataSource;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
 /**
  * AUTHOR
@@ -12,10 +13,18 @@ public class dbMain {
 
     static String url = "jdbc:mariadb://localhost:3306/index_bot?useUnicode=true&characterEncoding=utf-8&useSSL=false";
     static String user = "root";
-    static String pass = "";
+    static String pass = "pass";
     static String max_con = "130";
 
-    private static final MariaDbPoolDataSource DATABASE_POOL = new MariaDbPoolDataSource(url + "&user=" + user  + "&password=" + pass + "&maxPoolSize=" + max_con);
+    private static MariaDbPoolDataSource DATABASE_POOL;
+
+    static {
+        try {
+            DATABASE_POOL = new MariaDbPoolDataSource(url + "&user=" + user  + "&password=" + pass + "&maxPoolSize=" + max_con);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void init()
     {
