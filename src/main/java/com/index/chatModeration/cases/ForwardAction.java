@@ -1,6 +1,5 @@
 package com.index.chatModeration.cases;
 
-import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class ForwardAction {

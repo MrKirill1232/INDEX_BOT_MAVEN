@@ -2,7 +2,6 @@ package com.index.data.sql;
 
 import com.index.IndexMain;
 import com.index.dbHandler.dbMain;
-import org.apache.cassandra.index.Index;
 
 import java.sql.*;
 import java.util.ArrayList;

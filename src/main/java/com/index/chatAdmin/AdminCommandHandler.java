@@ -3,6 +3,7 @@ package com.index.chatAdmin;
 import com.index.IndexMain;
 import com.index.chatAdmin.cases.*;
 import com.index.chatAdmin.handlers.banHandler;
+import com.index.chatAdmin.handlers.muteHandler;
 import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.userInfoHolder;
 import com.index.dbHandler.dbMain;
@@ -18,10 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 
 public class AdminCommandHandler {
 
@@ -90,12 +88,12 @@ public class AdminCommandHandler {
         else if (orig_message.startsWith("//listofignoringstickers")) {
             StringTokenizer st = new StringTokenizer(orig_message);
             st.nextToken();
-            String sticker_url = "";
+            StringBuilder sticker_url = new StringBuilder();
             if (st.hasMoreTokens()){
                 while (st.hasMoreTokens()){
-                    sticker_url += st.nextToken();
+                    sticker_url.append(st.nextToken());
                 }
-                new listOfIgnoringStickersAction(update, sticker_url);
+                new listOfIgnoringStickersAction(update, sticker_url.toString());
             }
             else {
                 new listOfIgnoringStickersAction(update, "null");
@@ -103,10 +101,10 @@ public class AdminCommandHandler {
 
         }
         else if (orig_message.startsWith("//mute")) {
-            new muteAction(update);
+            new muteHandler().callMute(update);
         }
         else if (orig_message.startsWith("//unmute")) {
-            new muteAction(update);
+            new muteHandler().callMute(update);
         }
         else if (orig_message.startsWith("//getentities")) {
             new getEntitiesAction(update);
@@ -216,13 +214,16 @@ public class AdminCommandHandler {
             }
         }
         else if (orig_message.equals("//addtodb")) {
-            Message umu = update.getMessage().getReplyToMessage();
+            Message umu;
+            if ( update.getMessage().getReplyToMessage() != null ){
+                umu = update.getMessage().getReplyToMessage();
+            } else return;
             restrictionFilesHolder rfh = restrictionFilesHolder.getInstance();
             if (umu.hasAnimation()) {
                 rfh.addRestrictionGIFIDs(umu.getAnimation().getFileUniqueId());
             }
             else if ( umu.hasPhoto() ) {
-                rfh.addRestrictionPhotoIDs(umu.getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileSize)).orElse(null).getFileUniqueId());
+                rfh.addRestrictionPhotoIDs(Objects.requireNonNull(umu.getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileSize)).orElse(null)).getFileUniqueId());
             }
             else if ( umu.hasSticker() ) {
                 rfh.addRestrictionStickerIDs(umu.getSticker().getSetName());
@@ -230,16 +231,15 @@ public class AdminCommandHandler {
             else if ( umu.hasVideo() ) {
                 rfh.addRestrictionVideoIDs(umu.getVideo().getFileUniqueId());
             }
+            else if ( umu.hasViaBot() ) {
+                rfh.addRestrictionViaBotIDs(String.valueOf(umu.getViaBot().getId()));
+            }
             rfh.storeMe();
         }
     }
 
     boolean CheckUserPermissions (Update update){
-        if ( update.getMessage().getFrom().getId() == 499220683 || update.getMessage().getFrom().getId() == 1087968824
-        || update.getMessage().getFrom().getId() == 1093703997 || update.getMessage().getFrom().getId() == 244171712 )
-        {
-            return true;
-        }
-        return false;
+        return update.getMessage().getFrom().getId() == 499220683 || update.getMessage().getFrom().getId() == 1087968824
+                || update.getMessage().getFrom().getId() == 1093703997 || update.getMessage().getFrom().getId() == 244171712;
     }
 }

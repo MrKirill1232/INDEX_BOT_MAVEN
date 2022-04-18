@@ -1,99 +1,103 @@
 package com.index.chatAdmin.handlers;
 
 import com.index.IndexMain;
+import com.index.data.sql.userInfoHolder;
 import com.index.dbHandler.handlers.dbRestrictionHandler;
+import org.jetbrains.annotations.Nullable;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.RestrictChatMember;
 import org.telegram.telegrambots.meta.api.objects.ChatPermissions;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.Calendar;
 import java.util.StringTokenizer;
 
 public class muteHandler {
 
     IndexMain im = new IndexMain();
-    dbRestrictionHandler rh = new dbRestrictionHandler();
-    String newmessage;
 
-    ChatPermissions UnGetPermissions (){
-        ChatPermissions mute_perm = new ChatPermissions();
-        mute_perm.setCanSendMessages(false);
-        mute_perm.setCanSendOtherMessages(false);
-        mute_perm.setCanSendMediaMessages(false);
-        return mute_perm;
-    }
-    ChatPermissions GetPermissions (){
-        ChatPermissions mute_perm = new ChatPermissions();
-        mute_perm.setCanSendMessages(true);
-        mute_perm.setCanSendOtherMessages(true);
-        mute_perm.setCanSendMediaMessages(true);
-        return mute_perm;
-    }
-
-    /**
-     * Проверка, имеется ли стикер в список игнорируемых
-     *
-     * @param chat_id чат, для которого добавляется исключение;
-     * @param user_id ид пользователя, для которого добавляется исключение;
-
-     * @param name имя пользователя, который выполнил команду;
-     * @return <li>{@code true} стикер присутствует в списке игнорируемых стикеров;<li>{@code false} отсутствует в списке игнорируемых стикеров;
-     */
-
-    public boolean tryMute ( Long chat_id, Long user_id, String name, String mute_name, long time, boolean set_mute ){
-        im.SendAnswer(im.YummyReChat, name, "ВЫЗВАЛИ УСТАРЕВШИЙ МЕТОД МУТА, ИСПРАВЛЯЙ!");
-        return tryMute(chat_id, user_id, name, mute_name, time, set_mute, "");
-    }
-    public boolean tryMute ( Long chat_id, Long user_id, String name, String mute_name, long time, boolean set_mute, String comment ){
-
-        if ( user_id > 0 ){
-            return setMuteUser(  chat_id,  user_id,  name,  mute_name,  time,  set_mute, comment );
-        }
-        else /*if ( user_id < 0 )*/{
-            return setMuteGroup(  chat_id,  user_id,  name,  mute_name,  time,  set_mute, comment );
-        }
-    }
-    public boolean setMuteUser( Long chat_id, Long user_id, String name, String mute_name, long time, boolean set_mute, String comment ){
-        RestrictChatMember mute = new RestrictChatMember();
-        mute.setChatId(String.valueOf(chat_id));
-        mute.setUserId(user_id);
-        mute.setUntilDate((int) time);
-        if (set_mute){
-            mute.setPermissions(UnGetPermissions());
-        }
-        else {
-            mute.setPermissions(GetPermissions());
-            rh.UpdateRestrictionTimeFromTable(chat_id, user_id, name, 0);
-        }
-        try {
-            im.execute(mute);
-            if (  rh.AddRestrictionUserToTable(chat_id, user_id, name, time, "mute", comment) ){
-                im.SendAnswer(im.YummyReChat, "INDEX_BOT", "Мут для пользователя установлен на уровне БД;");
+    public boolean  callMute(Update update) {
+        Message temp = update.getMessage();
+        String chat_id = String.valueOf(update.getMessage().getChatId());
+        StringBuilder user_id = new StringBuilder();
+        String call_name = temp.getSenderChat() == null ? temp.getFrom().getFirstName() : temp.getSenderChat().getTitle();
+        String mute_name = temp.getReplyToMessage() == null ? null : temp.getReplyToMessage().getSenderChat() == null ? temp.getReplyToMessage().getFrom().getFirstName() : temp.getReplyToMessage().getSenderChat().getTitle();
+        StringBuilder comment = new StringBuilder();
+        Calendar time = null;
+        boolean set_mute = true;
+        String message = update.getMessage().getText().toLowerCase();
+        StringTokenizer st = new StringTokenizer(message);
+        st.nextToken();
+        if (message.startsWith("//unmute")){
+            set_mute = false;
+            while ( st.hasMoreTokens() ){
+                user_id.append(st.nextToken());
             }
-            else {
-                im.SendAnswer(im.YummyReChat, "INDEX_BOT", "Ошибка при установке мута на уровне БД;");
-            }
-            return true;
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-            return false;
+            user_id = new StringBuilder(user_id.isEmpty() ? temp.getReplyToMessage().getSenderChat() == null ? String.valueOf(temp.getReplyToMessage().getFrom().getId()) : String.valueOf(temp.getReplyToMessage().getSenderChat().getId()) : user_id);
+            mute_name = mute_name == null ? userInfoHolder.getInstance().getTemplate(chat_id, user_id.toString()).get_user_name() : mute_name;
         }
-    }
-    public boolean setMuteGroup ( Long chat_id, Long user_id, String name, String mute_name, long time, boolean set_mute, String comment ){
-        if ( set_mute ){
-            if ( rh.GetRestrictionTimeFromTable(chat_id, user_id, name) > System.currentTimeMillis()/1000 ){
-                return rh.UpdateRestrictionTimeFromTable(chat_id, user_id, name, time);
+        else if (message.contains("//mute") || message.contains("/mute") ){
+            if ( message.equals("//mute") || message.equals("/mute") || !st.hasMoreTokens() ){
+                im.SendAnswer(chat_id, call_name, "Ошибка обработки команды //mute. Проверьте написание команды\n//mute секунд/минут/часов время ИД пользователя (необязательно если пересланное)");
             }
-            else {
-                return rh.AddRestrictionUserToTable(chat_id, user_id, name, time, "mute", comment);
+            while ( st.hasMoreTokens() ){
+                String token = st.nextToken();
+                if ( token.contains("д") && time == null ){
+                    time = Calendar.getInstance();
+                    time.add(Calendar.DATE, Integer.parseInt(token.replace("д","")));
+                } else if (token.contains("ч") && time == null ){
+                    time = Calendar.getInstance();
+                    time.add(Calendar.HOUR, Integer.parseInt(token.replace("ч","")));
+                } else if ( token.contains("м") && time == null ) {
+                    time = Calendar.getInstance();
+                    time.add(Calendar.MINUTE, Integer.parseInt(token.replace("м","")));
+                } else if ( time == null ){
+                    time = Calendar.getInstance();
+                    if ( Integer.parseInt(token.replace("c","")) == 0 ) {
+                        time.add(Calendar.DATE, -2);
+                    } else time.add(Calendar.SECOND, Integer.parseInt(token.replace("c","")));
+                } else {
+                    comment.append(comment.isEmpty() ? "" : " ").append(token);
+                }
             }
-        }
-        else {
-            if ( rh.CheckUserInRestrictionTable(chat_id, user_id, name)){
-                return rh.UpdateRestrictionTimeFromTable(chat_id, user_id, name, 0);
-            }
-            else {
+            if ( time == null ) {
+                im.SendAnswer(chat_id, call_name, "Ошибка обработки команды //mute. Проверьте написание команды\n//mute секунд/минут/часов время ИД пользователя (необязательно если пересланное)");
                 return false;
             }
+            user_id = new StringBuilder(temp.getReplyToMessage().getSenderChat() == null ? String.valueOf(temp.getReplyToMessage().getFrom().getId()) : String.valueOf(temp.getReplyToMessage().getSenderChat().getId()));
+        }
+        return callMute(chat_id, user_id.toString(), call_name, mute_name, comment.toString(), time, set_mute);
+    }
+
+    public boolean callMute(String chat_id, String user_id, String call_name, String mute_name, String comment, @Nullable Calendar time, boolean set_mute){
+        // permission constructor
+        ChatPermissions mute_perm = new ChatPermissions();
+        mute_perm.setCanSendMessages(!set_mute);
+        mute_perm.setCanSendOtherMessages(!set_mute);
+        mute_perm.setCanSendMediaMessages(!set_mute);
+        // mute constructor
+        RestrictChatMember mute = new RestrictChatMember();
+        mute.setChatId(chat_id);
+        mute.setUserId(Long.parseLong(user_id));
+        mute.setUntilDate( time != null ? Math.toIntExact(time.getTimeInMillis()/1000) : 0 );
+        mute.setPermissions(mute_perm);
+        // set mute in DB
+        userInfoHolder.getInstance().updateRestrictionName(chat_id, user_id, String.valueOf(mute.getUntilDate()));
+        userInfoHolder.getInstance().updateRestrictionType(chat_id, user_id, set_mute ? 1 : 0);
+        userInfoHolder.getInstance().storeMe(chat_id, user_id);
+        if ( set_mute ) {
+            new dbRestrictionHandler().AddRestrictionUserToTable(Long.parseLong(chat_id), Long.parseLong(user_id), call_name, mute.getUntilDate(), "mute", comment);
+            im.SendAnswer(im.YummyReChat, call_name, "Попытка замутить пользователя " + mute_name + " до " + time.getTime() + ".");
+        } else {
+            im.SendAnswer(im.YummyReChat, call_name, "Попытка раз-замутить пользователя " + mute_name + ".");
+        }
+        // trying to execute
+        try {
+            im.execute(mute);
+            return true;
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
     }
 }

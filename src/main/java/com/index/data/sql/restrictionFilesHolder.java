@@ -4,49 +4,62 @@ import com.index.IndexMain;
 import com.index.dbHandler.dbMain;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class restrictionFilesHolder {
 
-    private static final String SELECT_CHAT_QUERY = "SELECT id FROM ban_files WHERE type=?";
+    private static final String SELECT_TYPE_QUERY = "SELECT type FROM ban_files";
+    private static final String SELECT_ID_QUERY = "SELECT id FROM ban_files WHERE type=?";
     private final static String DELETE_ALL_INFO_QUERY = "DELETE FROM ban_files";
-
     private final static String INSERT_URL_QUERY = "INSERT INTO ban_files (type, id) VALUES (?,?)";
 
 
     private final Map<String, List<String>> _template = new HashMap<>();
+
     protected restrictionFilesHolder() {
-        _template.put("video", List.of("1"));
-        _template.put("gif", List.of("1"));
-        _template.put("sticker", List.of("1"));
-        _template.put("photo", List.of("1"));
         load();
         StringBuilder st = new StringBuilder(": Загружены запрещенные файлы:\n");
         st.append("- Фото - ").append(_template.get("photo") != null ? _template.get("photo").size() : "").append("\n");
         st.append("- GIF - ").append(_template.get("gif") != null ? _template.get("gif").size() : "").append("\n");
         st.append("- Sticker - ").append(_template.get("sticker") != null ? _template.get("sticker").size() : "").append("\n");
         st.append("- Video - ").append(_template.get("video") != null ? _template.get("video").size() : "").append("\n");
+        st.append("- ViaBOT - ").append(_template.get("viabot") != null ? _template.get("viabot").size() : "").append("\n");
         new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), getClass().getSimpleName() + st);
         System.out.println(getClass().getSimpleName() + st);
     }
 
-    private void load(){
+    private void load() {
         _template.clear();
+        List<String> type = new ArrayList<>();
         try (Connection con = dbMain.getConnection();
-            PreparedStatement st = con.prepareStatement(SELECT_CHAT_QUERY)) {
-            for (String type : _template.keySet()) {
-                st.setString(1, type);
-                List<String> temporary = new ArrayList<>();
+             Statement st = con.createStatement();
+             ResultSet rset = st.executeQuery(SELECT_TYPE_QUERY))
+        {
+            while (rset.next()){
+                final String type_id = rset.getString("type");
+                if ( !type.isEmpty() && type.contains(type_id) ){
+                    continue;
+                }
+                type.add(type_id);
+            }
+        }
+        catch (Exception e)
+        {
+            new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), getClass().getSimpleName() + ": Ошибка при получении ТИПов файлов с базы данных - " + e);
+            System.out.println(getClass().getSimpleName() + ": Ошибка при получении ТИПов файлов с базы данных - " + e);
+        }
+
+        try (Connection con = dbMain.getConnection();
+                 PreparedStatement st = con.prepareStatement(SELECT_ID_QUERY)) {
+            for (String type_id : type) {
+                st.setString(1, type_id);
                 try (ResultSet rset = st.executeQuery()) {
+                    List<String> temporary = new ArrayList<>();
                     while (rset.next()) {
                         temporary.add(rset.getString("id"));
-                        System.out.println(temporary);
                     }
+                    _template.put(type_id, temporary);
                 }
-                _template.replace(type, temporary);
             }
         }
         catch (Exception e)
@@ -64,12 +77,11 @@ public class restrictionFilesHolder {
             }
             try (PreparedStatement st = con.prepareStatement(INSERT_URL_QUERY)) {
                 for ( String type : _template.keySet() ){
-                    st.setString(1, type);
                     for ( String id : _template.get(type) ) {
+                        st.setString(1, type);
                         st.setString(2, id);
-                        st.addBatch();
+                        st.execute();
                     }
-                    st.executeBatch();
                 }
             }
             System.out.println(getClass().getSimpleName()  + ": Информация о всех запрещенных файлах сохранена в базе");
@@ -98,46 +110,49 @@ public class restrictionFilesHolder {
     public List<String> getRestrictionPhotoIDs(){
         return _template.get("photo");
     }
+    public List<String> getRestrictionViaBotIDs(){
+        return _template.get("viabot");
+    }
 
     public boolean addRestrictionGIFIDs(String id){
-        _template.putIfAbsent("gif", null);
-        if ( !_template.get("gif").contains(id) ) {
-            List<String> temporary = _template.get("gif").isEmpty() ? new ArrayList<>() : _template.get("gif");
-            temporary.add(id);
-            _template.replace("gif", temporary);
-            return _template.get("gif").contains(id);
-        }
-        return false;
+        List<String> temporary = _template.get("gif") == null ? new ArrayList<>() : _template.get("gif");
+        if ( temporary.contains(id)) return false;
+        temporary.add(id);
+        _template.putIfAbsent("gif", temporary);
+        _template.replace("gif", temporary);
+        return _template.get("gif").contains(id);
     }
     public boolean addRestrictionStickerIDs(String id){
-        _template.putIfAbsent("sticker", null);
-        if ( !_template.get("sticker").contains(id) ) {
-            List<String> temporary = _template.get("sticker").isEmpty() ? new ArrayList<>() : _template.get("sticker");
-            temporary.add(id);
-            _template.replace("sticker", temporary);
-            return _template.get("sticker").contains(id);
-        }
-        return false;
+        List<String> temporary = _template.get("sticker") == null ? new ArrayList<>() : _template.get("sticker");
+        if ( temporary.contains(id)) return false;
+        temporary.add(id);
+        _template.putIfAbsent("sticker", temporary);
+        _template.replace("sticker", temporary);
+        return _template.get("sticker").contains(id);
     }
     public boolean addRestrictionVideoIDs(String id){
-        _template.putIfAbsent("video", null);
-        if ( !_template.get("video").contains(id) ) {
-            List<String> temporary = _template.get("video").isEmpty() ? new ArrayList<>() : _template.get("video");
-            temporary.add(id);
-            _template.replace("video", temporary);
-            return _template.get("video").contains(id);
-        }
-        return false;
+        List<String> temporary = _template.get("video") == null ? new ArrayList<>() : _template.get("video");
+        if ( temporary.contains(id)) return false;
+        temporary.add(id);
+        _template.putIfAbsent("video", temporary);
+        _template.replace("video", temporary);
+        return _template.get("video").contains(id);
     }
     public boolean addRestrictionPhotoIDs(String id){
-        _template.putIfAbsent("photo", null);
-        if ( !_template.get("photo").contains(id) ) {
-            List<String> temporary = _template.get("photo").isEmpty() ? new ArrayList<>() : _template.get("photo");
-            temporary.add(id);
-            _template.replace("photo", temporary);
-            return _template.get("photo").contains(id);
-        }
-        return false;
+        List<String> temporary = _template.get("photo") == null ? new ArrayList<>() : _template.get("photo");
+        if ( temporary.contains(id)) return false;
+        temporary.add(id);
+        _template.putIfAbsent("photo", temporary);
+        _template.replace("photo", temporary);
+        return _template.get("photo").contains(id);
+    }
+    public boolean addRestrictionViaBotIDs(String id){
+        List<String> temporary = _template.get("viabot") == null ? new ArrayList<>() : _template.get("viabot");
+        if ( temporary.contains(id)) return false;
+        temporary.add(id);
+        _template.putIfAbsent("viabot", temporary);
+        _template.replace("viabot", temporary);
+        return _template.get("viabot").contains(id);
     }
 
     public boolean isRestrictionGIFIDs(String id){
@@ -151,6 +166,9 @@ public class restrictionFilesHolder {
     }
     public boolean isRestrictionPhotoIDs(String id){
         return _template.get("photo") != null && _template.get("photo").contains(id);
+    }
+    public boolean isRestrictionViaBotIDs(String id){
+        return _template.get("viabot") != null && _template.get("viabot").contains(id);
     }
 
 

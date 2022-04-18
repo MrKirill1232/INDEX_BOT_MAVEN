@@ -1,11 +1,7 @@
 package com.index.chatAdmin.cases;
 
 import com.index.IndexMain;
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-
-import java.util.Comparator;
-import java.util.Objects;
 
 public class getEntitiesAction {
     IndexMain im = new IndexMain();

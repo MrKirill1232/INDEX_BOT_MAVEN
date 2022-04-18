@@ -1,12 +1,7 @@
 package com.index.chatAdmin.cases;
 
 import com.index.IndexMain;
-import com.index.chatModeration.ChatModerationHandler;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.RestrictChatMember;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatPermissions;
 import org.telegram.telegrambots.meta.api.objects.Chat;
-import org.telegram.telegrambots.meta.api.objects.ChatMemberUpdated;
-import org.telegram.telegrambots.meta.api.objects.ChatPermissions;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class delayAction {

@@ -7,7 +7,6 @@ import org.json.simple.parser.JSONParser;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 
 public class jsonParser {
@@ -45,7 +44,7 @@ public class jsonParser {
                 }
             }
         } catch (Exception e) {
-            System.out.println("eror" + e.toString());
+            System.out.println("eror" + e);
         }
         newmessage = file.exists() + "\n" + search_success + "\n" + ya_user_id + "\n" + ya_user_name + "\n" + ya_user_avatar;
         im.SendAnswer(chat_id, name, newmessage);

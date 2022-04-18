@@ -1,5 +1,6 @@
 package com.index.dbHandler;
 
+import com.index.data.files.Config;
 import org.mariadb.jdbc.MariaDbPoolDataSource;
 
 import java.sql.Connection;
@@ -11,10 +12,10 @@ import java.sql.SQLException;
  */
 public class dbMain {
 
-    static String url = "jdbc:mariadb://localhost:3306/index_bot?useUnicode=true&characterEncoding=utf-8&useSSL=false";
-    static String user = "root";
-    static String pass = "pass";
-    static String max_con = "130";
+    static String url = "jdbc:mariadb://localhost:3306/" + Config.DB_NAME + "?useUnicode=true&characterEncoding=utf-8&useSSL=false";
+    static String user = Config.DB_USER;
+    static long pass = Config.DB_PASS;
+    static int max_con = Config.DB_MAX_CON;
 
     private static MariaDbPoolDataSource DATABASE_POOL;
 

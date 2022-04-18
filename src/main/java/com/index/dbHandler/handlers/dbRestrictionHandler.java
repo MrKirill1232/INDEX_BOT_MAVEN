@@ -187,8 +187,7 @@ public class dbRestrictionHandler {
                 {
                     final long restriction_time = rset.getLong("restriction_time");
                     if ( restriction_time > System.currentTimeMillis()/1000 ) {
-                        final String comment = rset.getString("comment");
-                        return comment;
+                        return rset.getString("comment");
                     }
                 }
             }

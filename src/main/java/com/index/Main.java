@@ -1,5 +1,6 @@
 package com.index;
 
+import com.index.data.files.Config;
 import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.stickerInfoHolder;
 import com.index.data.sql.userInfoHolder;
@@ -11,6 +12,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 public class Main {
     public static void main(String[] args) {
+        Config.load();
         dbMain.init();
         FutureAction.getInstance();
         stickerInfoHolder.getInstance();

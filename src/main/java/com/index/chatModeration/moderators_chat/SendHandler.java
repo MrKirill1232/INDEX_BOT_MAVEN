@@ -1,17 +1,12 @@
 package com.index.chatModeration.moderators_chat;
 
 import com.index.IndexMain;
-import org.apache.commons.io.FileUtils;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Comparator;
 import java.util.StringTokenizer;
-import java.util.stream.Stream;
 
 public class SendHandler {
     IndexMain im = new IndexMain();
@@ -98,10 +93,10 @@ public class SendHandler {
         }
         else if ( update.getMessage().hasPhoto() ) {
             org.telegram.telegrambots.meta.api.objects.InputFile file = new org.telegram.telegrambots.meta.api.objects.InputFile();
-            file.setMedia(update.getMessage().getPhoto().stream().sorted(Comparator.comparing(PhotoSize::getFileId).reversed()).findFirst().orElse(null).getFileId());
+            file.setMedia(update.getMessage().getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null).getFileId());
             //String file_id = "AgACAgIAAx0CUTEAAUYAAjZYYhMZRLHAHhL55WCA2ue4sgqndb0AAqu5MRvmpJhIcW22U_il1AgBAAMCAANzAAMjBA";
             //file.setMedia(file_id);
-            im.SendAnswer(im.YummyReChat, "", update.getMessage().getPhoto().stream().sorted(Comparator.comparing(PhotoSize::getFileId).reversed()).findFirst().orElse(null).getFileId());
+            im.SendAnswer(im.YummyReChat, "", update.getMessage().getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null).getFileId());
             SendPhoto photo = SendPhoto.builder()
                     .replyToMessageId((int) ReplyTo)
                     .photo(file)

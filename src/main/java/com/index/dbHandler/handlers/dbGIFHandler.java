@@ -2,14 +2,11 @@ package com.index.dbHandler.handlers;
 
 import com.index.IndexMain;
 import com.index.dbHandler.dbMain;
-import io.netty.util.internal.ObjectPool;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.logging.Handler;
-import java.util.logging.Level;
 
 public class dbGIFHandler {
 
@@ -68,12 +65,12 @@ public class dbGIFHandler {
         {
             statement.setString(1, String.valueOf(chat_id));
             statement.setString(2, String.valueOf(user_id));
-            statement.setString(3, String.valueOf("0"));
+            statement.setString(3, "0");
             statement.setString(4, String.valueOf(restriction_time));
-            statement.setString(5, String.valueOf("0"));
-            statement.setString(6, String.valueOf("0"));
-            statement.setString(7, String.valueOf("0"));
-            statement.setString(8, String.valueOf("0"));
+            statement.setString(5, "0");
+            statement.setString(6, "0");
+            statement.setString(7, "0");
+            statement.setString(8, "0");
             statement.execute();
         }
         catch (Exception e)

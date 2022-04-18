@@ -3,6 +3,7 @@ package com.index;
 import com.index.chatAdmin.AdminCommandHandler;
 import com.index.chatModeration.ChatModerationHandler;
 import com.index.chatModeration.moderators_chat.ModeratorChat;
+import com.index.data.files.Config;
 import com.index.future.FutureAction;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -10,7 +11,6 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.net.CacheRequest;
 import java.util.Calendar;
 
 public class IndexMain extends TelegramLongPollingBot {
@@ -25,8 +25,9 @@ public class IndexMain extends TelegramLongPollingBot {
         if (FutureAction.getInstance().getNextSave() <= Calendar.getInstance().getTimeInMillis()){
             FutureAction.getInstance().save();
         }
-        /*
-        if (update.getMessage().getFrom().getId() == (499220683) ||
+
+
+        /*if (update.getMessage().getFrom().getId() == (499220683) ||
            (update.getMessage().getFrom().getId() == (1093703997) ) )
         {
         }
@@ -150,12 +151,12 @@ public class IndexMain extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "Index";
+        return Config.BOT_NAME;
     }
 
     @Override
     public String getBotToken() {
-        return "123456789:qwerty";
+        return Config.BOT_TOKEN;
     }
 
 }

@@ -117,6 +117,9 @@ public class userInfoHolder {
             }
             // Insert all info back.
             for ( String chat_id : _template.keySet() ) {
+                if ( Long.parseLong(chat_id) > 0) {
+                    continue;
+                }
                 try (PreparedStatement st = con.prepareStatement(INSERT_INFO_QUERY)) {
                     st.setString(1, chat_id);
                     for (String user_id : _template.get(chat_id).keySet()) {
@@ -314,15 +317,14 @@ public class userInfoHolder {
             return _know_as;
         }
         public String getAllInfo(){
-            StringBuilder out = new StringBuilder();
-            out.append("User name - ").append(get_user_name()).append("\n");
-            out.append("sticker count - ").append(get_sticker_count()).append("\n");
-            out.append("gif count - ").append(get_gif_count()).append("\n");
-            out.append("next message reset - ").append(get_next_message_reset()).append("\n");
-            out.append("restriction type - ").append(get_restriction_type()).append("\n");
-            out.append("restriction time - ").append(get_restriction_time()).append("\n");
-            out.append("know as - ").append(get_know_as()).append("\n");
-            return out.toString();
+            String out = "User name - " + get_user_name() + "\n" +
+                    "sticker count - " + get_sticker_count() + "\n" +
+                    "gif count - " + get_gif_count() + "\n" +
+                    "next message reset - " + get_next_message_reset() + "\n" +
+                    "restriction type - " + get_restriction_type() + "\n" +
+                    "restriction time - " + get_restriction_time() + "\n" +
+                    "know as - " + get_know_as() + "\n";
+            return out;
         }
     }
 

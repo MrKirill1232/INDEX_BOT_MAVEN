@@ -2,7 +2,6 @@ package com.index.chatModeration.moderators_chat;
 
 import com.index.IndexMain;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -13,21 +12,22 @@ public class ModeratorChat {
         new ModeratorChat(null, "null");
     }
     public ModeratorChat (Update update, String type){
-        if (type.equals("Forwarding")){
-            if (false){
-                Forwarding(update);
-            }
-        }
-        else if (type.equals("Translate")){
-            Translate(update);
-        }
-        else if (type.equals("DeleteMe"))
-        {
-            if (true){
-                Forwarding(update);
-            }
-        }
-        else {
+        switch (type) {
+            case "Forwarding":
+                if (false) {
+                    Forwarding(update);
+                }
+                break;
+            case "Translate":
+                Translate(update);
+                break;
+            case "DeleteMe":
+                if (true) {
+                    Forwarding(update);
+                }
+                break;
+            default:
+                break;
         }
     }
     private void Forwarding (Update update){

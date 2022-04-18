@@ -67,8 +67,7 @@ public class dbBanTickets {
                 {
                     final String status = rset.getString("status");
                     if ( status.equals("Открыт") ) {
-                        final String text = rset.getString("text");
-                        return text;
+                        return rset.getString("text");
                     }
                 }
             }

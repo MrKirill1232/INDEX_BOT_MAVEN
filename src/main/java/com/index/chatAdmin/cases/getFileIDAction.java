@@ -21,7 +21,7 @@ public class getFileIDAction {
             im.SendAnswer(chat_id, name, newmessage);
         }
         else if (orig_message.equals("//getFileID")){
-            newmessage = String.valueOf(update.getMessage().getReplyToMessage().getAnimation().getFileUniqueId());
+            newmessage = update.getMessage().getReplyToMessage().getAnimation().getFileUniqueId();
             im.SendAnswer(chat_id, name, newmessage);
         }
         else {

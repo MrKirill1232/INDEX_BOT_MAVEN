@@ -1,17 +1,18 @@
 package com.index.chatModeration;
 
 import com.index.IndexMain;
+import com.index.chatAdmin.cases.listOfIgnoringStickersAction;
 import com.index.chatAdmin.handlers.muteHandler;
 import com.index.chatModeration.moderators_chat.ModeratorChat;
+import com.index.commandsHandler.UserCommansHandler;
 import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.stickerInfoHolder;
 import com.index.data.sql.userInfoHolder;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 
 public class ChatModerationHandler {
 
@@ -27,12 +28,14 @@ public class ChatModerationHandler {
     Long next_reset_time;
     Long curr_mute_time;
     String message_id;
+    Long update_time;
 
     List<String> ignoreUsers = new ArrayList<>(); // TODO - PUT IN SINGLETON
+    List<String> user_moderation = new ArrayList<>();
 
     private void setVariables(Update update){
         Message temp = update.getMessage();
-        original_message = temp.hasText() ? temp.getText() : temp.getCaption() != null ? temp.getCaption() : null;
+        original_message = temp.getText() != null ? temp.getText() : temp.getCaption() != null ? temp.getCaption() : null;
         user_id = temp.getSenderChat() == null ? String.valueOf(temp.getFrom().getId()) : String.valueOf(temp.getSenderChat().getId());
         update_name = temp.getSenderChat() == null ? temp.getFrom().getFirstName() : temp.getSenderChat().getTitle();
         chat_id = String.valueOf(temp.getChatId());
@@ -45,7 +48,8 @@ public class ChatModerationHandler {
         ignoreUsers.add("1087968824");      // YummyChannel
         ignoreUsers.add("1093703997");      // Altair
         ignoreUsers.add("-1001454322922L"); // YummyChannel_CHAT
-        // TODO: REMADE PUNISHMENT SYSTEM
+        user_moderation.add("610980102");      // Исаия
+        user_moderation.add("499220683");      // Исаия
         if ( !holder.checkUserInDB(String.valueOf(chat_id), String.valueOf(user_id)) ) {
             addUserInDataBase(false);
         }
@@ -71,22 +75,38 @@ public class ChatModerationHandler {
     }
     protected void callMute(Calendar time, String comment, boolean announce){
         if (announce) sendMessage(update_name + " - " + comment + " Разблокировка - " + time.getTime());
-        mh.tryMute(Long.parseLong(chat_id), Long.parseLong(user_id), "Index", update_name, time.getTimeInMillis()/1000, true, comment);
+        mh.callMute(chat_id, user_id, "Index", update_name, comment, time, true);
+    }
+    private boolean ifOutDate(){
+        Calendar update_time_calendar = Calendar.getInstance();
+        update_time_calendar.setTimeInMillis(update_time*1000);
+        update_time_calendar.add(Calendar.MINUTE, 10);
+        return ( update_time_calendar.getTimeInMillis() < System.currentTimeMillis() ) ;
     }
     public ChatModerationHandler (Update update)
     {
-        if ( update.getMessage() == null )
+        if ( update.getMessage() == null && !update.hasCallbackQuery() )
         {
             return;
         }
+        update_time = update.getMessage() == null ? update.getCallbackQuery().getMessage().getDate().longValue() : update.getMessage().getDate().longValue();
+        if ( update.hasCallbackQuery() && !ifOutDate()) {
+            original_message = update.getCallbackQuery().getData();
+            original_message = original_message.substring(13);
+            new listOfIgnoringStickersAction(update, original_message);
+            return;
+        } else if ( update.hasCallbackQuery() && ifOutDate() ) { System.out.println("UMU"); return; }
         setVariables(update);
+        if ( update.getMessage().getChatId() > 0 ) {
+            return;
+        }
         if ( ( chat_id.equals(String.valueOf(im.YummyChannel_CHAT)) && im.RESEND ) ){
             new ModeratorChat(update, "Forwarding");
         }
         if ( chat_id.equals(String.valueOf(im.YummyReChat)) ) {
             new ModeratorChat(update, "Translate");
         }
-        if ( ignoreUsers.contains(String.valueOf(user_id)) || chat_id.equals(String.valueOf(im.YummyReChat)) ){
+        if ( ( ( original_message==null || !original_message.startsWith("/") ) && ignoreUsers.contains(String.valueOf(user_id)) ) || chat_id.equals(String.valueOf(im.YummyReChat) ) ){
             return;
         }
         if ( curr_mute_time > curr_time){
@@ -95,6 +115,10 @@ public class ChatModerationHandler {
         }
         if ( next_reset_time < curr_time ) {
             resetFields();
+        }
+        if ( ( original_message != null && original_message.startsWith("/") ) && ( user_moderation.contains(user_id) || ignoreUsers.contains(user_id) )){
+            new UserCommansHandler(update);
+            return;
         }
         CheckRestriction(update);
     }
@@ -113,7 +137,7 @@ public class ChatModerationHandler {
         boolean need_to_announce = false;
         if ( temp.hasAnimation() ) {
             file_id = temp.getAnimation().getFileUniqueId();
-            if ( rfh.isRestrictionGIFIDs(file_id) || black_list_gif(file_id) ) {
+            if ( rfh.isRestrictionGIFIDs(file_id) ) {
                 new ModeratorChat(update, "DeleteMe");
                 deleteMessage();
                 calendar.add(Calendar.MINUTE, 10);
@@ -128,13 +152,13 @@ public class ChatModerationHandler {
                     calendar.add(Calendar.MINUTE, 2);
                     callMute(calendar, "Спам GIF файлами - автоматическая блокировка;", true);
                 } else {
-                    holder.updateGifCount(chat_id, user_id, ( gif_count + 1 ));
+                    if ( !ifOutDate() ) holder.updateGifCount(chat_id, user_id, ( gif_count + 1 ));
                 }
             }
         }
         if ( temp.hasVideo() ){
-            file_id = temp.getAnimation().getFileUniqueId();
-            if ( rfh.isRestrictionVideoIDs(file_id) || black_list_video(file_id) ) {
+            file_id = temp.getVideo().getFileUniqueId();
+            if ( rfh.isRestrictionVideoIDs(file_id) ) {
                 new ModeratorChat(update, "DeleteMe");
                 deleteMessage();
                 calendar.add(Calendar.MINUTE, 10);
@@ -144,7 +168,7 @@ public class ChatModerationHandler {
         }
         if ( temp.hasSticker() ) {
             file_id = temp.getSticker().getSetName();
-            if ( rfh.isRestrictionStickerIDs(file_id) || file_id.equalsIgnoreCase("gayman02") ) {
+            if ( rfh.isRestrictionStickerIDs(file_id) ) {
                 new ModeratorChat(update, "DeleteMe");
                 deleteMessage();
                 calendar.add(Calendar.MINUTE, 10);
@@ -162,7 +186,7 @@ public class ChatModerationHandler {
                     calendar.add(Calendar.MINUTE, 2);
                     callMute(calendar, "Спам стрикерами - Автоматическая блокировка;", true);
                 }
-                holder.updateStickerCount(chat_id, user_id, ( sticker_count + 1 ) );
+                if ( !ifOutDate() ) holder.updateStickerCount(chat_id, user_id, ( sticker_count + 1 ) );
             }
         }
         if ( update.getMessage().hasVoice()
@@ -180,14 +204,23 @@ public class ChatModerationHandler {
                 || update.getMessage().hasInvoice()
                 || update.getMessage().hasVideo()
                 || update.getMessage().hasVideoNote() ) {
-
         }
-        if (update.getMessage().hasViaBot())
+        if (temp.hasViaBot())
         {
-            if ( temp.getViaBot().getId() == (1745626430) ||
-                    temp.getViaBot().getId() == (1341194997)){
+            if ( rfh.isRestrictionViaBotIDs(String.valueOf(temp.getViaBot().getId())))
+            {
                 new ModeratorChat(update, "DeleteMe");
                 deleteMessage();
+            }
+        }
+        if ( temp.hasPhoto() ) {
+            file_id = Objects.requireNonNull(temp.getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null)).getFileUniqueId();
+            if ( rfh.isRestrictionPhotoIDs(file_id) ) {
+                new ModeratorChat(update, "DeleteMe");
+                deleteMessage();
+                calendar.add(Calendar.MINUTE, 10);
+                callMute(calendar, "Фото файлы подозрительного характера - автоматическая блокировка;\n" + update, false);
+                need_to_announce = true;
             }
         }
         if ( temp.getNewChatMembers().stream().findFirst().isPresent() ){
@@ -206,27 +239,5 @@ public class ChatModerationHandler {
             holder.updateNextMessageReset(String.valueOf(chat_id), String.valueOf(user_id), String.valueOf(mute_time));
             holder.updateGifCount(String.valueOf(chat_id), String.valueOf(user_id), 0);
             holder.updateStickerCount(String.valueOf(chat_id), String.valueOf(user_id), 0);
-    }
-
-    private boolean black_list_gif (String file_id){
-        List<String> temp = new ArrayList<>();
-        temp.add("AgADVAIAAqTNAUs");
-        temp.add("AQADVAIAAqTNAUty");
-        temp.add("AgADmAkAAr5RIEk");
-        temp.add("AgAD9AEAAjykEFA");
-        temp.add("AgADYwUAAnd7AVA");
-        temp.add("AgADrQsAArcB4Uk");
-        temp.add("AQADrQsAArcB4Uly");
-        temp.add("AgADzhIAAvmVyUg");
-        temp.add("AgADZBMAAiYx6Es");
-        temp.add("AgADkRIAAs5esUg");
-        temp.add("AgADVwQAAsaCKFM");
-        return temp.contains(file_id);
-    }
-
-    private boolean black_list_video (String file_id){
-        List<String> temp = new ArrayList<>();
-        temp.add("AgADhRMAAm4AAfBL");
-        return temp.contains(file_id);
     }
 }
