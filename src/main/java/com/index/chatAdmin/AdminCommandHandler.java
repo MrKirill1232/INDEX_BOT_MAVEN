@@ -4,6 +4,7 @@ import com.index.IndexMain;
 import com.index.chatAdmin.cases.*;
 import com.index.chatAdmin.handlers.banHandler;
 import com.index.chatAdmin.handlers.muteHandler;
+import com.index.data.sql.chatInfoHolder;
 import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.userInfoHolder;
 import com.index.dbHandler.dbMain;
@@ -75,17 +76,21 @@ public class AdminCommandHandler {
                                     String.valueOf(user_id)).getAllInfo();
             im.SendAnswer(chat_id, user_name,message);
         }
-        else if (orig_message.startsWith("//getchatid")){
+        else if (orig_message.startsWith("//chat_id")){
             newmessage = String.valueOf(chat_id);
             im.SendAnswer(499220683, user_name, newmessage);
         }
-        else if (orig_message.startsWith("//addignoringstickers")) {
+        else if ( orig_message.startsWith("//switch_s") ) {
+            chatInfoHolder chat_holder = chatInfoHolder.getInstance();
+            chat_holder.updateChatChatParam_CanSendGif(String.valueOf(chat_id), !chat_holder.getTemplate(String.valueOf(chat_id)).get_can_send_gifs() );
+        }
+        else if (orig_message.startsWith("//add_s")) {
             new addIgnoringStickersAction(update);
         }
-        else if (orig_message.startsWith("//removeignoringstickers")) {
+        else if (orig_message.startsWith("//del_s")) {
             new removeIgnoringStikersAction(update);
         }
-        else if (orig_message.startsWith("//listofignoringstickers")) {
+        else if (orig_message.startsWith("//list_s")) {
             StringTokenizer st = new StringTokenizer(orig_message);
             st.nextToken();
             StringBuilder sticker_url = new StringBuilder();

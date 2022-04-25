@@ -174,7 +174,7 @@ public class userInfoHolder {
                 st.execute();
             }
             System.out.println(getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранена в базе");
-            new IndexMain().SendAnswer(Long.parseLong(chat_id), getClass().getSimpleName(), getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранена в базе");
+            new IndexMain().SendAnswer(new IndexMain().YummyReChat, getClass().getSimpleName(), getClass().getSimpleName()  + ": Информация о пользователе " + user_id + " " + template.get_user_name() + " для чата " + chat_id + " сохранена в базе");
             return true;
         }
         catch (SQLException e)
@@ -317,12 +317,21 @@ public class userInfoHolder {
             return _know_as;
         }
         public String getAllInfo(){
+            long ban_time = Long.parseLong(get_restriction_time());
+            Calendar calendar = Calendar.getInstance();
+            if ( ban_time < System.currentTimeMillis() / 1000 || ban_time == 0 ) {
+                calendar = null;
+            } else { calendar.setTimeInMillis(ban_time*1000); }
+            long reset_time = Long.parseLong(get_next_message_reset());
+            Calendar calendar1 = Calendar.getInstance();
+            if ( reset_time == 0 ) {calendar1 = null; }
+            else { calendar1.setTimeInMillis(reset_time*1000); }
             String out = "User name - " + get_user_name() + "\n" +
                     "sticker count - " + get_sticker_count() + "\n" +
                     "gif count - " + get_gif_count() + "\n" +
-                    "next message reset - " + get_next_message_reset() + "\n" +
-                    "restriction type - " + get_restriction_type() + "\n" +
-                    "restriction time - " + get_restriction_time() + "\n" +
+                    "next message reset - " + ( calendar1 != null ? calendar1.getTime() : "0" ) + "\n" +
+                    "restriction type - " + ( get_restriction_type() == 0 ? "нету" : get_restriction_type() == 1 ? "мут" : "бан" ) + "\n" +
+                    "restriction time - " + ( calendar != null ? calendar.getTime() : "0" ) + "\n" +
                     "know as - " + get_know_as() + "\n";
             return out;
         }

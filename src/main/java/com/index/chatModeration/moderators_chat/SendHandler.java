@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.File;
 import java.util.Comparator;
 import java.util.StringTokenizer;
 
@@ -93,10 +94,12 @@ public class SendHandler {
         }
         else if ( update.getMessage().hasPhoto() ) {
             org.telegram.telegrambots.meta.api.objects.InputFile file = new org.telegram.telegrambots.meta.api.objects.InputFile();
+            //java.io.File photo_f = new File("photo_2022-02-06_17-23-09.jpg");
             file.setMedia(update.getMessage().getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null).getFileId());
+            //file.setMedia(photo_f);
             //String file_id = "AgACAgIAAx0CUTEAAUYAAjZYYhMZRLHAHhL55WCA2ue4sgqndb0AAqu5MRvmpJhIcW22U_il1AgBAAMCAANzAAMjBA";
             //file.setMedia(file_id);
-            im.SendAnswer(im.YummyReChat, "", update.getMessage().getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null).getFileId());
+            //im.SendAnswer(im.YummyReChat, "", update.getMessage().getPhoto().stream().max(Comparator.comparing(PhotoSize::getFileId)).orElse(null).getFileId());
             SendPhoto photo = SendPhoto.builder()
                     .replyToMessageId((int) ReplyTo)
                     .photo(file)
@@ -104,10 +107,7 @@ public class SendHandler {
                     .chatId(String.valueOf(im.YummyChannel_CHAT))
                     .build();
 
-            im.SendAnswer(im.YummyReChat, "", String.valueOf(update.getMessage().getPhoto().stream()));
-
-
-
+            //im.SendAnswer(im.YummyReChat, "", String.valueOf(update.getMessage().getPhoto().stream()));
             try {
                 im.execute(photo);
             } catch (TelegramApiException e) {

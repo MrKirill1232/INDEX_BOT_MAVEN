@@ -1,6 +1,7 @@
 package com.index;
 
 import com.index.data.files.Config;
+import com.index.data.sql.chatInfoHolder;
 import com.index.data.sql.restrictionFilesHolder;
 import com.index.data.sql.stickerInfoHolder;
 import com.index.data.sql.userInfoHolder;
@@ -14,6 +15,7 @@ public class Main {
     public static void main(String[] args) {
         Config.load();
         dbMain.init();
+        chatInfoHolder.getInstance();
         FutureAction.getInstance();
         stickerInfoHolder.getInstance();
         userInfoHolder.getInstance();

@@ -67,10 +67,10 @@ public class muteHandler {
             }
             user_id = new StringBuilder(temp.getReplyToMessage().getSenderChat() == null ? String.valueOf(temp.getReplyToMessage().getFrom().getId()) : String.valueOf(temp.getReplyToMessage().getSenderChat().getId()));
         }
-        return callMute(chat_id, user_id.toString(), call_name, mute_name, comment.toString(), time, set_mute);
+        return callMute(chat_id, user_id.toString(), call_name, mute_name, comment.toString(), time, set_mute, update);
     }
 
-    public boolean callMute(String chat_id, String user_id, String call_name, String mute_name, String comment, @Nullable Calendar time, boolean set_mute){
+    public boolean callMute(String chat_id, String user_id, String call_name, String mute_name, String comment, @Nullable Calendar time, boolean set_mute, Update bot_comment){
         // permission constructor
         ChatPermissions mute_perm = new ChatPermissions();
         mute_perm.setCanSendMessages(!set_mute);
@@ -87,14 +87,16 @@ public class muteHandler {
         userInfoHolder.getInstance().updateRestrictionType(chat_id, user_id, set_mute ? 1 : 0);
         userInfoHolder.getInstance().storeMe(chat_id, user_id);
         if ( set_mute ) {
-            new dbRestrictionHandler().AddRestrictionUserToTable(Long.parseLong(chat_id), Long.parseLong(user_id), call_name, mute.getUntilDate(), "mute", comment);
+            new dbRestrictionHandler().AddRestrictionUserToTable(Long.parseLong(chat_id), Long.parseLong(user_id), call_name, mute.getUntilDate(), "mute", comment, bot_comment);
             im.SendAnswer(im.YummyReChat, call_name, "Попытка замутить пользователя " + mute_name + " до " + time.getTime() + ".");
         } else {
             im.SendAnswer(im.YummyReChat, call_name, "Попытка раз-замутить пользователя " + mute_name + ".");
         }
         // trying to execute
         try {
-            im.execute(mute);
+            if ( Long.parseLong(user_id) > 0 ) {
+                im.execute(mute);
+            }
             return true;
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);

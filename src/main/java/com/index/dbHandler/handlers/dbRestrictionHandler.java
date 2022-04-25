@@ -2,6 +2,7 @@ package com.index.dbHandler.handlers;
 
 import com.index.IndexMain;
 import com.index.dbHandler.dbMain;
+import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -116,7 +117,7 @@ public class dbRestrictionHandler {
         }
     }
 
-    private static final String ADD_RESTRICTED_USER_IN_TABLE = "INSERT INTO restrictions (chat_id,user_id,restriction_type,restriction_time,comment) VALUES (?,?,?,?,?)";
+    private static final String ADD_RESTRICTED_USER_IN_TABLE = "INSERT INTO restrictions (chat_id,user_id,restriction_type,restriction_time,comment,bot_comment) VALUES (?,?,?,?,?,?)";
 
     /**
      * Вносим пользователя в список ограниченных возможностей;
@@ -128,7 +129,7 @@ public class dbRestrictionHandler {
      * @return <li>{@code true} пользователь заблокирован;<li>{@code false} пользователь не заблокирован;
      */
     public Boolean AddRestrictionUserToTable(long chat_id, long user_id, String name, long RestrictionTime){
-        return AddRestrictionUserToTable(chat_id, user_id, name, RestrictionTime, "mute", "");
+        return AddRestrictionUserToTable(chat_id, user_id, name, RestrictionTime, "mute", "", null);
     }
     /**
      * Вносим пользователя в список ограниченных возможностей;
@@ -141,7 +142,7 @@ public class dbRestrictionHandler {
      * @param Comment комментарий модератора;
      * @return <li>{@code true} пользователь заблокирован;<li>{@code false} пользователь не заблокирован;
      */
-    public Boolean AddRestrictionUserToTable(long chat_id, long user_id, String name, long RestrictionTime, String RestrictionType, String Comment)
+    public Boolean AddRestrictionUserToTable(long chat_id, long user_id, String name, long RestrictionTime, String RestrictionType, String Comment, Update update)
     {
         try (Connection con = dbMain.getConnection();
              PreparedStatement statement = con.prepareStatement(ADD_RESTRICTED_USER_IN_TABLE))
@@ -151,6 +152,7 @@ public class dbRestrictionHandler {
             statement.setString(3, String.valueOf(RestrictionType));
             statement.setString(4, String.valueOf(RestrictionTime));
             statement.setString(5, String.valueOf(Comment));
+            statement.setString(6, String.valueOf(update));
             statement.execute();
             return true;
         }
